@@ -1,0 +1,51 @@
+app:
+  name: "外贸获客Agent"
+  version: "1.0.0"
+  description: "全自动外贸获客Agent - 从自然语言指令到客户触达的自动化闭环"
+
+server:
+  host: "0.0.0.0"
+  port: 8000
+
+feishu:
+  app_id: ""
+  app_secret: ""
+  base_token: ""
+
+email:
+  smtp_server: ""
+  smtp_port: 587
+  smtp_username: ""
+  smtp_password: ""
+  sender_email: ""
+
+search:
+  serp_api_key: ""
+  google_api_key: ""
+  google_cse_id: ""
+
+crm:
+  table_name: "外贸客户"
+  fields:
+    - name: "公司名称"
+      type: "text"
+    - name: "网址"
+      type: "url"
+    - name: "邮箱"
+      type: "email"
+    - name: "电话"
+      type: "text"
+    - name: "联系人"
+      type: "text"
+    - name: "行业"
+      type: "text"
+    - name: "评分"
+      type: "number"
+    - name: "状态"
+      type: "select"
+    - name: "创建时间"
+      type: "date"
+
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
