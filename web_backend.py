@@ -501,77 +501,110 @@ Best,
         "ai_inquiry": {
             "subject": _ai_generate_subject(req.company_name, req.industry, req.product, "inquiry"),
             "body": _ai_generate_body(req.company_name, req.contact, req.industry, req.product, "inquiry")
+        },
+        "ai_product": {
+            "subject": _ai_generate_subject(req.company_name, req.industry, req.product, "product"),
+            "body": _ai_generate_body(req.company_name, req.contact, req.industry, req.product, "product")
+        },
+        "ai_invitation": {
+            "subject": _ai_generate_subject(req.company_name, req.industry, req.product, "invitation"),
+            "body": _ai_generate_body(req.company_name, req.contact, req.industry, req.product, "invitation")
+        },
+        "ai_sample": {
+            "subject": _ai_generate_subject(req.company_name, req.industry, req.product, "sample"),
+            "body": _ai_generate_body(req.company_name, req.contact, req.industry, req.product, "sample")
+        },
+        "ai_agency": {
+            "subject": _ai_generate_subject(req.company_name, req.industry, req.product, "agency"),
+            "body": _ai_generate_body(req.company_name, req.contact, req.industry, req.product, "agency")
+        },
+        "ai_followup": {
+            "subject": _ai_generate_subject(req.company_name, req.industry, req.product, "followup"),
+            "body": _ai_generate_body(req.company_name, req.contact, req.industry, req.product, "followup")
         }
     }
     tpl = templates.get(req.email_type, templates["standard"])
     return {"email": tpl, "type": req.email_type}
 
 def _ai_generate_subject(company_name: str, industry: str, product: str, style: str = "cooperation") -> str:
-    """AI智能生成邮件主题"""
-    if style == "supplier":
-        if company_name and product:
-            return f"供应商申请 | {product}供应链合作 - 致{company_name}"
-        if company_name and industry:
-            return f"{industry}供应商合作意向 - {company_name}"
-        return f"供应商合作申请 - {company_name or '贵公司'}"
+    """AI智能生成邮件主题 - 8种商业化类型"""
+    company = company_name or "贵公司"
     
-    if style == "inquiry":
-        if company_name and product:
-            return f"询价：{product}采购咨询 - {company_name}"
-        if company_name and industry:
-            return f"{industry}产品采购询价 - {company_name}"
-        return f"产品询价 - {company_name or '咨询'}"
+    subjects = {
+        "supplier": [
+            f"供应商申请 | {product or '产品'}供应链合作 - 致{company}" if product else f"供应商合作意向 - {company}",
+            f"成为{company}的{industry or '产品'}供应商" if industry else f"供应商申请 - {company}",
+        ],
+        "inquiry": [
+            f"询价：{product}采购咨询 - {company}" if product else f"产品采购询价 - {company}",
+            f"{industry or '产品'}询价单 - {company}" if industry else f"采购询价 - {company}",
+        ],
+        "product": [
+            f"新品推介 | {product} - {company}专属优惠" if product else f"产品推介 - 限时优惠",
+            f"{industry or '产品'}解决方案 - 致{company}",
+        ],
+        "invitation": [
+            f"展会邀请 | {company}诚邀参观",
+            f"邀请函 | {industry or '行业'}展会 - 期待与{company}会面",
+        ],
+        "sample": [
+            f"样品申请 | {product or '产品'}免费样品 - {company}" if product else f"样品申请 - 免费寄送",
+            f"免费样品 | {industry or '产品'}质量体验",
+        ],
+        "agency": [
+            f"代理申请 | {product or '品牌'}区域代理合作" if product else f"代理合作意向 - {company}",
+            f"经销商招募 | {industry or '产品'}合作机会",
+        ],
+        "followup": [
+            f"跟进：{product or '合作'}事宜 - {company}" if product else f"合作跟进 - {company}",
+            f"Re: {industry or '合作'}方案确认",
+        ],
+        "cooperation": [
+            f"{product}解决方案 | {company}的专业合作伙伴" if product else f"合作机会 - {company}",
+            f"{industry}领域合作 | 致{company}" if industry else f"业务合作咨询 - {company}",
+        ],
+    }
     
-    # cooperation 默认合作型
-    if not company_name:
-        return "合作咨询"
-    if industry and product:
-        return f"{product}解决方案 | {company_name}的专业合作伙伴"
-    if industry:
-        return f"{industry}领域创新方案 | 致{company_name}"
-    if product:
-        return f"{product}供应合作机会"
-    return f"关于{company_name}的合作机会"
+    style_subjects = subjects.get(style, subjects["cooperation"])
+    return random.choice(style_subjects)
 
 def _ai_generate_body(company_name: str, contact: str, industry: str, product: str, style: str = "cooperation") -> str:
-    """AI智能生成邮件正文 - 支持三种类型"""
+    """AI智能生成邮件正文 - 8种商业化类型"""
     greeting = f"Dear {contact}" if contact else "Dear Decision Maker"
     company = company_name or "your company"
     
     if style == "supplier":
         # 供应商型 - 强调供应能力和产品质量
-        opening_lines = [
+        opening = random.choice([
             f"I am writing to express our interest in becoming a supplier for {company}.",
             f"We would like to establish a supply partnership with {company}.",
-            f"As a potential supplier, we are reaching out to introduce our capabilities to {company}.",
-        ]
-        opening = random.choice(opening_lines)
+            f"As a potential supplier, we are reaching out to introduce our capabilities.",
+        ])
         
         industry_prompts = {
-            "electronics": "We are a leading manufacturer of electronic components with over 10 years of experience serving global clients.",
+            "electronics": "We are a leading manufacturer of electronic components with ISO 9001 & IATF 16949 certifications.",
             "furniture": "We specialize in high-quality furniture manufacturing with advanced production facilities.",
             "textile": "We offer comprehensive textile manufacturing services from raw materials to finished products.",
             "machinery": "We are a certified machinery manufacturer with strong R&D capabilities.",
-            "automotive": "We supply automotive components to major OEMs worldwide with IATF 16949 certification.",
+            "automotive": "We supply automotive components to major OEMs worldwide.",
         }
         industry_text = industry_prompts.get(industry.lower(), "We are a professional manufacturer with strong production capabilities.")
         
-        capability_lines = [
-            "✓ Monthly production capacity: 100,000+ units",
+        capabilities = [
+            "✓ Monthly capacity: 100,000+ units",
             "✓ Lead time: 15-30 days",
-            "✓ Quality certification: ISO 9001 / CE / UL",
-            "✓ Competitive factory-direct pricing",
-            "✓ Flexible MOQ support",
+            "✓ Certifications: ISO 9001 / CE / UL",
+            "✓ Factory-direct competitive pricing",
+            "✓ Flexible MOQ: 100 units",
         ]
-        
         if product:
-            capability_lines.insert(0, f"✓ Specialized in {product} manufacturing")
+            capabilities.insert(0, f"✓ Specialized in {product} manufacturing")
         
-        support_lines = [
-            "✓ Free samples available for quality evaluation",
-            "✓ Technical support and after-sales service",
-            "✓ Customization and OEM/ODM services",
-            "✓ Quality inspection reports provided",
+        supports = [
+            "✓ Free samples for quality evaluation",
+            "✓ Technical support & after-sales service",
+            "✓ OEM/ODM customization",
+            "✓ Quality inspection reports",
         ]
         
         body = f"""{greeting},
@@ -581,70 +614,238 @@ def _ai_generate_body(company_name: str, contact: str, industry: str, product: s
 {industry_text}
 
 Our Supply Capabilities:
-{chr(10).join(capability_lines[:5])}
+{chr(10).join(capabilities[:5])}
 
 Why Choose Us:
-{chr(10).join(random.sample(support_lines, 3))}
+{chr(10).join(random.sample(supports, 3))}
 
-We would be honored to become your trusted supplier. Could we send you our product catalog and company profile for review?
+We would be honored to become your trusted supplier. May we send you our product catalog and company profile?
 
-I look forward to your positive response.
+Looking forward to your positive response.
 
 Best regards,
 [Your Name]
 [Your Company]
 [Website]"""
-        
+    
     elif style == "inquiry":
         # 询价型 - 采购咨询
-        opening_lines = [
+        opening = random.choice([
             f"We are interested in purchasing {product or 'products'} from your company.",
             f"I am writing to inquire about your {product or 'products'} for our procurement needs.",
-            f"Our company is looking for a reliable supplier for {product or industry or 'products'}.",
-        ]
-        opening = random.choice(opening_lines)
-        
-        inquiry_points = [
-            f"We represent a company in the {industry or 'manufacturing'} sector and are expanding our supply chain.",
-            f"We have ongoing demand for {product or 'quality products'} and are evaluating potential suppliers.",
-            f"Your company came highly recommended as a potential supplier.",
-        ]
+            f"Our company is evaluating suppliers for {product or industry or 'products'}.",
+        ])
         
         questions = [
-            f"1. What is your best price for {product or 'your products'} (MOQ: 1000 units)?",
-            f"2. What is your standard lead time for {industry or 'standard'} orders?",
-            "3. Do you provide samples for quality evaluation?",
-            "4. What are your payment terms and shipping options?",
-            "5. Can you provide product certifications (ISO, CE, UL)?",
+            f"1. Best price for {product or 'your products'} (MOQ: 1000 units)?",
+            f"2. Standard lead time for orders?",
+            "3. Sample availability for quality evaluation?",
+            "4. Payment terms and shipping options?",
+            "5. Product certifications (ISO, CE, UL)?",
         ]
         
         body = f"""{greeting},
 
 {opening}
 
-{random.choice(inquiry_points)}
+We represent a company in the {industry or 'manufacturing'} sector and are expanding our supply chain.
 
-We would appreciate if you could provide the following information:
+We would appreciate information on:
 
 {chr(10).join(questions[:5])}
 
-We are looking to establish a long-term partnership with a reliable supplier. If you have a product catalog or price list, please share it with us.
+Please share your product catalog and price list if available.
 
 Looking forward to your quotation.
 
 Best regards,
 [Your Name]
 [Your Company]
-[Contact Information]"""
+[Contact]"""
+    
+    elif style == "product":
+        # 产品推介型 - 新品推广
+        opening = random.choice([
+            f"We are excited to introduce our latest {product or 'products'} to {company}.",
+            f"I'm reaching out to showcase our new {product or 'product line'}.",
+            f"Our company has launched innovative {product or 'products'} that may interest {company}.",
+        ])
         
+        features = [
+            "✓ Latest technology & design",
+            "✓ Competitive pricing: up to 30% off",
+            "✓ Premium quality guaranteed",
+            "✓ Fast delivery: 7-15 days",
+            "✓ 2-year warranty included",
+        ]
+        if product:
+            features.insert(0, f"✓ Specialized {product} solutions")
+        
+        offer = random.choice([
+            "🎁 Limited-time offer: 10% discount for first order",
+            "🎁 Free shipping on orders over $5,000",
+            "🎁 Buy 2 get 1 free for new customers",
+        ])
+        
+        body = f"""{greeting},
+
+{opening}
+
+Key Features:
+{chr(10).join(features[:5])}
+
+{offer}
+
+This offer is valid for 30 days. Would you like to receive our detailed product catalog?
+
+Reply now to secure this special pricing!
+
+Best regards,
+[Your Name]
+[Your Company]"""
+    
+    elif style == "invitation":
+        # 展会邀请型
+        exhibitions = [
+            {"name": "Canton Fair", "date": "April 15-19", "booth": "Hall 5.2, E-123"},
+            {"name": "CES Las Vegas", "date": "January 9-12", "booth": "LVCC, South Hall"},
+            {"name": "IFA Berlin", "date": "September 1-5", "booth": "Hall 18, B-45"},
+        ]
+        exh = random.choice(exhibitions)
+        
+        body = f"""{greeting},
+
+We cordially invite {company} to visit our booth at {exh['name']}!
+
+📅 Exhibition: {exh['name']}
+📆 Date: {exh['date']}
+📍 Booth: {exh['booth']}
+
+Highlights:
+✓ New product showcase
+✓ Live demonstrations
+✓ Exclusive exhibition discounts
+✓ Face-to-face consultation
+
+We would be honored to meet you in person and discuss potential collaboration.
+
+Please let us know if you can attend, and we'll send you a visitor pass.
+
+Best regards,
+[Your Name]
+[Your Company]
+[Phone/WeChat]"""
+    
+    elif style == "sample":
+        # 样品申请型
+        opening = random.choice([
+            f"We are pleased to offer FREE samples of our {product or 'products'} to {company}.",
+            f"Experience our quality firsthand with complimentary samples.",
+            f"Request your free {product or 'product'} sample today!",
+        ])
+        
+        benefits = [
+            "✓ 100% free - no hidden costs",
+            "✓ Fast delivery: 3-5 days",
+            "✓ Full product specifications included",
+            "✓ Technical support available",
+        ]
+        
+        body = f"""{greeting},
+
+{opening}
+
+Sample Benefits:
+{chr(10).join(benefits)}
+
+To request your free sample:
+1. Reply with your shipping address
+2. Specify product requirements
+3. We'll ship within 24 hours
+
+This offer is available for qualified businesses. Limit: 2 samples per company.
+
+Don't miss this opportunity to evaluate our quality firsthand!
+
+Best regards,
+[Your Name]
+[Your Company]"""
+    
+    elif style == "agency":
+        # 代理招募型
+        opening = random.choice([
+            f"We are seeking exclusive agents/distributors for {product or 'our products'} in your region.",
+            f"Join our global network as an authorized distributor.",
+            f"Exclusive agency opportunity for {company}.",
+        ])
+        
+        supports = [
+            "✓ Exclusive territory protection",
+            "✓ Marketing materials & training",
+            "✓ Competitive wholesale pricing",
+            "✓ Technical support team",
+            "✓ 30% margin guarantee",
+        ]
+        
+        requirements = [
+            "• Established sales network",
+            "• Industry experience preferred",
+            "• Annual purchase commitment",
+        ]
+        
+        body = f"""{greeting},
+
+{opening}
+
+Agency Benefits:
+{chr(10).join(supports)}
+
+Requirements:
+{chr(10).join(requirements)}
+
+We offer comprehensive support to help you succeed in your market.
+
+Interested? Reply with your company profile to start the discussion.
+
+Best regards,
+[Your Name]
+[Your Company]
+[Website]"""
+    
+    elif style == "followup":
+        # 跟进型
+        opening = random.choice([
+            f"I'm following up on our previous conversation about {product or 'our products'}.",
+            f"Just checking in regarding our {product or 'collaboration'} proposal.",
+            f"Wanted to reconnect about the {product or 'opportunity'} we discussed.",
+        ])
+        
+        body = f"""{greeting},
+
+{opening}
+
+Since our last communication, we have:
+✓ Updated our product line with new features
+✓ Introduced special pricing for valued partners
+✓ Improved delivery times to 10-15 days
+
+Would you be available for a quick call this week to discuss further?
+
+I'm confident we can find a solution that benefits {company}.
+
+Looking forward to hearing from you.
+
+Best regards,
+[Your Name]
+[Your Company]"""
+    
     else:
         # cooperation 合作型 - 默认
-        opening_lines = [
+        opening = random.choice([
             f"I hope this email finds you well at {company}.",
-            f"Greetings from your industry partner!",
+            f"Greetings from your potential industry partner!",
             f"Hope you're having a productive day at {company}.",
-        ]
-        opening = random.choice(opening_lines)
+        ])
         
         industry_prompts = {
             "electronics": "We specialize in high-quality electronic components and semiconductor solutions.",
@@ -658,25 +859,24 @@ Best regards,
         product_lines = []
         if product:
             product_lines = [
-                f"✓ {product} - Industry-leading performance",
+                f"✓ {product} - Industry-leading quality",
                 f"✓ Customized {product} solutions",
                 f"✓ Competitive pricing on {product}",
             ]
         
         benefits = [
-            "✓ Cost reduction potential of 15-30%",
+            "✓ Cost reduction: 15-30%",
             "✓ Supply chain optimization",
-            "✓ Fast response and delivery",
+            "✓ Fast response & delivery",
             "✓ ISO 9001 certified quality",
             "✓ 24/7 technical support",
         ]
         
-        call_to_action = [
+        call_to_action = random.choice([
             "Would you be available for a 15-minute call next week?",
             "Could we schedule a brief introduction call?",
             "Let me know if you'd like to discuss further.",
-            "I'd welcome the opportunity to connect with you.",
-        ]
+        ])
         
         body = f"""{greeting},
 
@@ -693,9 +893,7 @@ Based on our research of {company}, we believe our solutions could significantly
         
         body += "Key Benefits:\n" + "\n".join(random.sample(benefits, 3)) + "\n\n"
         
-        body += f"""{random.choice(call_to_action)}
-
-Please let me know your availability or any questions you may have.
+        body += f"""{call_to_action}
 
 Best regards,
 [Your Name]
