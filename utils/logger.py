@@ -1,5 +1,8 @@
 import logging
-from config import config
+import os
+import sys
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+from utils.config import config
 
 logger = logging.getLogger('trade-customer-agent')
 logger.setLevel(getattr(logging, config.logging.get('level', 'INFO')))

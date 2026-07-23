@@ -173,8 +173,11 @@ step_check_files() {
     elif [ -f "$MAIN_FILE" ]; then
         log_ok "主入口文件: main.py"
         BACKEND_MODE="main"
+    elif [ -f "${SCRIPT_DIR}/web_simple.py" ]; then
+        log_ok "简单Web入口: web_simple.py"
+        BACKEND_MODE="simple"
     else
-        log_error "未找到后端启动文件 (web_backend.py 或 main.py)"
+        log_error "未找到后端启动文件 (web_backend.py / main.py / web_simple.py)"
         exit 1
     fi
 
@@ -250,10 +253,33 @@ step_start_server() {
             echo -e ""
             $PYTHON_CMD "$BACKEND_FILE"
         fi
+    elif [ "$BACKEND_MODE" = "simple" ]; then
+        # 简单Web模式
+        if [ "$daemon" = "true" ]; then
+            log_info "后台启动Web服务..."
+            nohup $PYTHON_CMD "${SCRIPT_DIR}/web_simple.py" > "$LOG_FILE" 2>&1 &
+            local pid=$!
+            echo $pid > "$PID_FILE"
+            sleep 2
+            if kill -0 "$pid" 2>/dev/null; then
+                log_ok "Web服务已后台启动 (PID: $pid)"
+            else
+                log_error "Web服务启动失败，查看日志: $LOG_FILE"
+                exit 1
+            fi
+        else
+            log_ok "Web服务启动中..."
+            echo -e ""
+            echo -e "${GREEN}═════════════════════════════════════════════════════${NC}"
+            echo -e "${GREEN}  Web服务地址: http://${HOST}:${PORT}${NC}"
+            echo -e "${GREEN}═════════════════════════════════════════════════════${NC}"
+            echo -e ""
+            $PYTHON_CMD "${SCRIPT_DIR}/web_simple.py"
+        fi
     else
-        # main.py 模式
-        log_info "启动 main.py..."
-        $PYTHON_CMD "$MAIN_FILE" "$@"
+        # main.py 模式 - 不支持daemon，直接运行
+        log_info "启动 main.py（注意：main.py不支持后台模式）..."
+        $PYTHON_CMD "$MAIN_FILE"
     fi
 }
 
