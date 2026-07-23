@@ -108,6 +108,15 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC'
 .config-status.configured { background: #d1fae5; color: #065f46; }
 .config-status.not-configured { background: #fee2e2; color: #991b1b; }
 @media (max-width: 768px) { .smtp-grid { grid-template-columns: 1fr; } .two-col { grid-template-columns: 1fr; } .form-row { flex-direction: column; } }
+.stat-card[onclick]:hover { transform: translateY(-3px); box-shadow: 0 10px 24px rgba(0,0,0,0.18); opacity: 0.95; }
+.stat-detail-table { width:100%; border-collapse:collapse; font-size:13px; }
+.stat-detail-table th { text-align:left; padding:8px 10px; background:#f9fafb; font-weight:600; color:#374151; border-bottom:2px solid #e5e7eb; position:sticky; top:0; }
+.stat-detail-table td { padding:8px 10px; border-bottom:1px solid #f3f4f6; color:#4b5563; vertical-align:top; }
+.stat-detail-table tr:hover td { background:#fafafa; }
+.stat-detail-row { display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #f3f4f6; font-size:13px; }
+.stat-detail-row span:first-child { color:#6b7280; }
+.stat-detail-row span:last-child { color:#1f2937; font-weight:500; }
+
 </style>
 </head>
 <body>
@@ -145,11 +154,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC'
     <div class="tab-content active" id="tab-dashboard">
         <div id="dashboard-alert"></div>
         <div class="stats-grid">
-            <div class="stat-card"><div class="stat-num" id="stat-customers">-</div><div class="stat-label">总客户数</div></div>
-            <div class="stat-card"><div class="stat-num" id="stat-emails">-</div><div class="stat-label">发送邮件</div></div>
-            <div class="stat-card"><div class="stat-num" id="stat-a">-</div><div class="stat-label">A级客户</div></div>
-            <div class="stat-card"><div class="stat-num" id="stat-rate">-</div><div class="stat-label">转化率</div></div>
-            <div class="stat-card"><div class="stat-num" id="stat-score">-</div><div class="stat-label">平均评分</div></div>
+            <div class="stat-card" style="cursor:pointer;" onclick="showStatDetail('customers')" title="点击查看全部客户"><div class="stat-num" id="stat-customers">-</div><div class="stat-label">总客户数 👁</div></div>
+            <div class="stat-card" style="cursor:pointer;" onclick="showStatDetail('emails')" title="点击查看全部邮件"><div class="stat-num" id="stat-emails">-</div><div class="stat-label">发送邮件 👁</div></div>
+            <div class="stat-card" style="cursor:pointer;" onclick="showStatDetail('a_level')" title="点击查看A级客户"><div class="stat-num" id="stat-a">-</div><div class="stat-label">A级客户 👁</div></div>
+            <div class="stat-card" style="cursor:pointer;" onclick="showStatDetail('conversion')" title="点击查看转化详情"><div class="stat-num" id="stat-rate">-</div><div class="stat-label">转化率 👁</div></div>
+            <div class="stat-card" style="cursor:pointer;" onclick="showStatDetail('score')" title="点击查看评分分布"><div class="stat-num" id="stat-score">-</div><div class="stat-label">平均评分 👁</div></div>
         </div>
         <div class="two-col">
             <div class="card">
@@ -467,6 +476,17 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC'
     </div>
 </div>
 
+<div id="stat-detail-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1001;align-items:center;justify-content:center;">
+    <div style="background:white;border-radius:12px;padding:24px;max-width:900px;width:92%;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <div class="card-title" id="stat-detail-title" style="margin:0;">详情</div>
+            <button class="btn" style="background:#f3f4f6;color:#374151;padding:4px 12px;" onclick="closeStatDetail()">✕ 关闭</button>
+        </div>
+        <div id="stat-detail-summary" style="background:#f9fafb;border-radius:8px;padding:12px 16px;margin-bottom:14px;font-size:13px;color:#374151;"></div>
+        <div id="stat-detail-body" style="overflow-y:auto;flex:1;"></div>
+    </div>
+</div>
+
 <div id="crm-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center;">
     <div style="background:white;border-radius:12px;padding:24px;max-width:600px;width:90%;max-height:90vh;overflow-y:auto;">
         <div class="card-title" id="crm-modal-title">新增客户</div>
@@ -732,6 +752,139 @@ async function editCRMFields(id) {
             document.getElementById('crm-m-notes').value = c.notes || '';
         }, 50);
     } catch (e) { /* openCRMModal 已打开，保持空白 */ }
+}
+
+// ==================== 统计卡片详情弹窗 ====================
+function closeStatDetail() {
+    document.getElementById('stat-detail-modal').style.display = 'none';
+}
+
+function _fmtTime(ts) {
+    if (!ts) return '-';
+    try { return new Date(ts * 1000).toLocaleString('zh-CN'); } catch (e) { return '-'; }
+}
+
+function _customerRow(c) {
+    const id = c.id || '';
+    const click = id ? 'onclick="openCRMModal(\'' + escapeHtml(id) + '\');editCRMFields(\'' + escapeHtml(id) + '\');closeStatDetail();"' : '';
+    return '<tr style="cursor:' + (id ? 'pointer' : 'default') + ';" ' + click + '>' +
+        '<td>' + escapeHtml(c.company_name || '') + '</td>' +
+        '<td>' + (c.website ? '<a href="' + escapeHtml(c.website) + '" target="_blank" style="color:#667eea;">' + escapeHtml(c.website) + '</a>' : '-') + '</td>' +
+        '<td>' + escapeHtml(c.industry || '-') + '</td>' +
+        '<td style="text-align:center;"><span class="level-badge level-' + escapeHtml(c.level || 'D') + '">' + escapeHtml(c.level || 'D') + '</span></td>' +
+        '<td style="text-align:center;">' + (c.score || 0) + '</td>' +
+        '<td>' + escapeHtml(c.status || '待开发') + '</td>' +
+        '<td>' + (c.email ? escapeHtml(c.email) : '-') + '</td>' +
+        '</tr>';
+}
+
+function _customerTableHeader() {
+    return '<tr><th>公司名称</th><th>网站</th><th>行业</th><th style="text-align:center;">等级</th><th style="text-align:center;">评分</th><th>状态</th><th>邮箱</th></tr>';
+}
+
+async function showStatDetail(type) {
+    const titleEl = document.getElementById('stat-detail-title');
+    const summaryEl = document.getElementById('stat-detail-summary');
+    const bodyEl = document.getElementById('stat-detail-body');
+    bodyEl.innerHTML = '<div style="text-align:center;padding:30px;color:#9ca3af;"><span class="loading"></span>加载中...</div>';
+    summaryEl.innerHTML = '';
+    document.getElementById('stat-detail-modal').style.display = 'flex';
+
+    try {
+        const crmResp = await api('/crm/customers');
+        const mailResp = await api('/email/history');
+        const customers = (crmResp && crmResp.customers) ? crmResp.customers : (Array.isArray(crmResp) ? crmResp : []);
+        const emails = (mailResp && mailResp.history) ? mailResp.history : (Array.isArray(mailResp) ? mailResp : []);
+        let body = '', title = '', summary = '';
+
+        if (type === 'customers') {
+            title = '📊 全部客户列表';
+            summary = '共 <b>' + customers.length + '</b> 个客户';
+            body = customers.length === 0
+                ? '<div style="text-align:center;padding:30px;color:#9ca3af;">暂无客户</div>'
+                : '<table class="stat-detail-table">' + _customerTableHeader() + customers.map(_customerRow).join('') + '</table>';
+        } else if (type === 'emails') {
+            title = '✉️ 全部邮件发送记录';
+            const sent = emails.filter(e => e.status === 'sent').length;
+            const sim = emails.filter(e => e.status !== 'sent').length;
+            summary = '共 <b>' + emails.length + '</b> 封邮件（已发送 ' + sent + ' / 模拟或失败 ' + sim + '）';
+            if (emails.length === 0) {
+                body = '<div style="text-align:center;padding:30px;color:#9ca3af;">暂无邮件记录</div>';
+            } else {
+                body = '<table class="stat-detail-table"><tr><th>公司</th><th>收件邮箱</th><th>主题</th><th style="text-align:center;">状态</th><th>发送时间</th></tr>' +
+                    emails.map(e => {
+                        const st = e.status === 'sent' ? '已发送' : e.status === 'failed' ? '失败' : (e.status || '模拟');
+                        const stCls = e.status === 'sent' ? 'history-sent' : 'history-sim';
+                        return '<tr><td>' + escapeHtml(e.company_name || '-') + '</td><td>' + escapeHtml(e.to_email || '-') + '</td><td>' + escapeHtml(e.subject || '-') + '</td><td style="text-align:center;"><span class="history-status ' + stCls + '">' + st + '</span></td><td style="font-size:12px;color:#9ca3af;">' + _fmtTime(e.sent_at) + '</td></tr>';
+                    }).join('') + '</table>';
+            }
+        } else if (type === 'a_level') {
+            title = '🏆 A 级客户列表';
+            const aList = customers.filter(c => c.level === 'A');
+            summary = 'A级客户共 <b>' + aList.length + '</b> 个（评分 ≥ 85）';
+            body = aList.length === 0
+                ? '<div style="text-align:center;padding:30px;color:#9ca3af;">暂无 A 级客户（评分需 ≥ 85 分）</div>'
+                : '<table class="stat-detail-table">' + _customerTableHeader() + aList.map(_customerRow).join('') + '</table>';
+        } else if (type === 'conversion') {
+            title = '📈 转化率详情';
+            const total = customers.length;
+            const converted = customers.filter(c => c.status === '已成交');
+            const contacting = customers.filter(c => c.status === '联系中');
+            const pending = customers.filter(c => c.status === '待开发');
+            const lost = customers.filter(c => c.status === '已流失');
+            const rate = total > 0 ? (converted.length / total * 100).toFixed(1) : '0.0';
+            summary = '转化率 <b>' + rate + '%</b>（已成交 ' + converted.length + ' / 总数 ' + total + '）';
+            let distRows = [
+                { label: '已成交', count: converted.length, color: '#10b981' },
+                { label: '联系中', count: contacting.length, color: '#3b82f6' },
+                { label: '待开发', count: pending.length, color: '#f59e0b' },
+                { label: '已流失', count: lost.length, color: '#ef4444' },
+            ].filter(r => r.count > 0);
+            let distHtml = distRows.map(r => {
+                const pct = total > 0 ? (r.count / total * 100).toFixed(1) : 0;
+                return '<div style="margin-bottom:10px;"><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px;"><span>' + r.label + '</span><span style="color:#6b7280;">' + r.count + ' (' + pct + '%)</span></div><div style="height:8px;background:#f3f4f6;border-radius:4px;overflow:hidden;"><div style="height:100%;width:' + pct + '%;background:' + r.color + ';"></div></div></div>';
+            }).join('');
+            body = '<div style="margin-bottom:16px;">' + distHtml + '</div>';
+            body += '<div style="font-size:14px;font-weight:600;margin-bottom:8px;color:#374151;">已成交客户清单：</div>';
+            body += converted.length === 0
+                ? '<div style="text-align:center;padding:20px;color:#9ca3af;">暂无已成交客户</div>'
+                : '<table class="stat-detail-table">' + _customerTableHeader() + converted.map(_customerRow).join('') + '</table>';
+        } else if (type === 'score') {
+            title = '⭐ 客户评分分布';
+            const total = customers.length || 1;
+            const buckets = [
+                { label: '90-100 (优质)', min: 90, max: 100, color: '#10b981' },
+                { label: '80-89 (A级)', min: 80, max: 89, color: '#3b82f6' },
+                { label: '70-79 (B级)', min: 70, max: 79, color: '#6366f1' },
+                { label: '55-69 (C级)', min: 55, max: 69, color: '#f59e0b' },
+                { label: '0-54 (D级)', min: 0, max: 54, color: '#9ca3af' },
+            ];
+            const avg = customers.reduce((s, c) => s + (c.score || 0), 0) / total;
+            const maxScore = customers.reduce((m, c) => Math.max(m, c.score || 0), 0);
+            const minScore = customers.reduce((m, c) => Math.min(m, c.score || 0), 100);
+            summary = '平均评分 <b>' + avg.toFixed(1) + '</b> | 最高 <b>' + maxScore + '</b> | 最低 <b>' + minScore + '</b> | 共 ' + customers.length + ' 个客户';
+            let distHtml = buckets.map(b => {
+                const cnt = customers.filter(c => (c.score || 0) >= b.min && (c.score || 0) <= b.max).length;
+                const pct = (cnt / total * 100).toFixed(1);
+                return '<div style="margin-bottom:10px;"><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px;"><span>' + b.label + '</span><span style="color:#6b7280;">' + cnt + ' (' + pct + '%)</span></div><div style="height:8px;background:#f3f4f6;border-radius:4px;overflow:hidden;"><div style="height:100%;width:' + pct + '%;background:' + b.color + ';"></div></div></div>';
+            }).join('');
+            body = '<div style="margin-bottom:16px;">' + distHtml + '</div>';
+            const sorted = customers.slice().sort((a, b) => (b.score || 0) - (a.score || 0));
+            body += '<div style="font-size:14px;font-weight:600;margin-bottom:8px;color:#374151;">客户评分排名（从高到低）：</div>';
+            body += '<table class="stat-detail-table"><tr><th style="text-align:center;width:50px;">排名</th><th>公司名称</th><th>网站</th><th>行业</th><th style="text-align:center;">等级</th><th style="text-align:center;">评分</th><th>状态</th></tr>' +
+                sorted.map((c, i) => {
+                    const id = c.id || '';
+                    const click = id ? 'onclick="openCRMModal(\'' + escapeHtml(id) + '\');editCRMFields(\'' + escapeHtml(id) + '\');closeStatDetail();"' : '';
+                    return '<tr style="cursor:' + (id ? 'pointer' : 'default') + ';" ' + click + '><td style="text-align:center;font-weight:600;color:#667eea;">' + (i + 1) + '</td><td>' + escapeHtml(c.company_name || '') + '</td><td>' + (c.website ? '<a href="' + escapeHtml(c.website) + '" target="_blank" style="color:#667eea;">' + escapeHtml(c.website) + '</a>' : '-') + '</td><td>' + escapeHtml(c.industry || '-') + '</td><td style="text-align:center;"><span class="level-badge level-' + escapeHtml(c.level || 'D') + '">' + escapeHtml(c.level || 'D') + '</span></td><td style="text-align:center;font-weight:600;">' + (c.score || 0) + '</td><td>' + escapeHtml(c.status || '待开发') + '</td></tr>';
+                }).join('') + '</table>';
+        }
+
+        titleEl.textContent = title;
+        summaryEl.innerHTML = summary;
+        bodyEl.innerHTML = body;
+    } catch (e) {
+        bodyEl.innerHTML = '<div style="text-align:center;padding:30px;color:#ef4444;">加载失败：' + escapeHtml(e.message) + '</div>';
+    }
 }
 
 async function searchCustomers() {
