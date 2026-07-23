@@ -1,4 +1,4 @@
-# Agent外贸获客 rendae - 前端页面详细结构文档
+# Agent外贸获客 - 前端页面详细结构文档
 
 > 版本: v1.0
 > 文件: web_frontend.html (1187 行)
@@ -23,7 +23,7 @@ HTML 文档 (1187行)
 │   ├── .header 顶部导航栏 (L115-L130, 16行)
 │   │   ├── .logo 左侧 Logo 区
 │   │   │   ├── .logo-icon (🎯 图标)
-│   │   │   └── .logo-text (Agent外贸获客 rendae)
+│   │   │   └── .logo-text (Agent外贸获客)
 │   │   └── .header-right 右侧用户区
 │   │       ├── #login-area 登录输入区 (默认显示)
 │   │       │   ├── #api-key-input 输入框 (password类型)
