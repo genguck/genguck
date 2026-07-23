@@ -273,22 +273,61 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC'
 
     <div class="tab-content" id="tab-crawl">
         <div class="card">
-            <div class="card-title">🕸️ 官网爬取</div>
+            <div class="card-title">🕸️ 官网爬取（分类详情）</div>
+            <p style="color:#6b7280;font-size:13px;margin-bottom:14px;">输入公司官网 URL，自动提取并分类展示：基本信息、联系方式、产品、认证、社交媒体、关键页面、页面结构。</p>
             <div class="form-row">
-                <div class="form-group" style="flex:2;"><label>网站 URL *</label><input type="text" id="cr-url" placeholder="https://example.com"></div>
+                <div class="form-group" style="flex:3;"><label>网站 URL *</label><input type="text" id="cr-url" placeholder="https://www.example.com"></div>
             </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                <button class="btn btn-primary" onclick="crawlWebsite()">爬取网站</button>
-                <button class="btn btn-info" onclick="extractContacts()">提取联系方式</button>
+                <button class="btn btn-primary" id="cr-btn" onclick="crawlWebsite()">🚀 一键完整爬取</button>
+                <button class="btn btn-info" onclick="crawlWebsite('basic')">📄 仅基本信息</button>
+                <button class="btn btn-success" id="cr-crm-btn" style="display:none;" onclick="crawlAddToCRM()">📥 一键入CRM</button>
             </div>
             <div class="alert alert-error" id="cr-alert" style="margin-top:12px;"></div>
+            <div class="alert alert-success" id="cr-success" style="margin-top:12px;"></div>
         </div>
-        <div class="card" id="cr-result-card" style="display:none;">
-            <div class="card-title">📄 爬取结果</div>
-            <div id="cr-title" style="font-weight:600;margin-bottom:8px;"></div>
-            <div id="cr-url-show" style="color:#667eea;font-size:12px;margin-bottom:12px;word-break:break-all;"></div>
-            <div id="cr-contacts" style="margin-bottom:12px;"></div>
-            <div class="email-preview" id="cr-content" style="max-height:300px;"></div>
+        <div id="cr-result-area" style="display:none;">
+            <!-- 基本信息 -->
+            <div class="card">
+                <div class="card-title">📄 基本信息</div>
+                <div id="cr-basic"></div>
+            </div>
+            <div class="two-col">
+                <!-- 联系方式 -->
+                <div class="card">
+                    <div class="card-title">📞 联系方式</div>
+                    <div id="cr-contacts"></div>
+                </div>
+                <!-- 产品与服务 -->
+                <div class="card">
+                    <div class="card-title">🏭 产品与服务</div>
+                    <div id="cr-products"></div>
+                </div>
+            </div>
+            <div class="two-col">
+                <!-- 认证资质 -->
+                <div class="card">
+                    <div class="card-title">✅ 认证资质</div>
+                    <div id="cr-certs"></div>
+                </div>
+                <!-- 社交媒体 -->
+                <div class="card">
+                    <div class="card-title">🌐 社交媒体</div>
+                    <div id="cr-social"></div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-title">🔗 关键页面</div>
+                <div id="cr-pages"></div>
+            </div>
+            <div class="card">
+                <div class="card-title">📑 页面结构（标题）</div>
+                <div id="cr-headings"></div>
+            </div>
+            <div class="card">
+                <div class="card-title">📝 页面内容预览</div>
+                <div class="email-preview" id="cr-content" style="max-height:300px;"></div>
+            </div>
         </div>
     </div>
 
@@ -989,40 +1028,138 @@ async function batchAddCRM() {
     showAlert('sc-alert', '已添加 ' + ok + ' 个客户到CRM', 'success');
 }
 
-async function crawlWebsite() {
+let _crawlCrmData = null; // 一键入CRM用的暂存数据
+
+async function crawlWebsite(mode) {
     const url = document.getElementById('cr-url').value.trim();
     if (!url) { showAlert('cr-alert', '请输入网站URL', 'error'); return; }
+    document.getElementById('cr-alert').classList.remove('show');
+    document.getElementById('cr-success').classList.remove('show');
+    const btn = document.getElementById('cr-btn');
+    btn.disabled = true; btn.innerHTML = '<span class="loading"></span>爬取中...';
+    document.getElementById('cr-crm-btn').style.display = 'none';
     try {
-        const res = await api('/crawl/website', 'POST', { url });
-        document.getElementById('cr-result-card').style.display = 'block';
-        document.getElementById('cr-title').textContent = res.title;
-        document.getElementById('cr-url-show').textContent = res.url;
-        document.getElementById('cr-content').textContent = res.content;
-        document.getElementById('cr-contacts').innerHTML = '';
-    } catch (e) { showAlert('cr-alert', e.message, 'error'); }
+        const endpoint = mode === 'basic' ? '/crawl/website' : '/crawl/full';
+        const res = await api(endpoint, 'POST', { url });
+        document.getElementById('cr-result-area').style.display = 'block';
+
+        // 统一字段：basic 模式 res 直接是分类结构；full 模式 res.crawl 是分类结构
+        const c = (mode === 'basic') ? res : (res.crawl || res);
+        const meta = c.meta || {};
+        // ===== 基本信息 =====
+        let basicHtml = '<div style="display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap;">';
+        if (meta.favicon) basicHtml += '<img src="' + escapeHtml(meta.favicon) + '" onerror="this.style.display=\'none\'" style="width:48px;height:48px;border-radius:8px;border:1px solid #e5e7eb;">';
+        basicHtml += '<div style="flex:1;min-width:240px;">';
+        basicHtml += '<div style="font-size:16px;font-weight:600;margin-bottom:6px;">' + escapeHtml(meta.title || res.title || '(无标题)') + '</div>';
+        basicHtml += '<div style="font-size:12px;color:#667eea;margin-bottom:8px;word-break:break-all;"><a href="' + escapeHtml(url) + '" target="_blank" style="color:#667eea;">' + escapeHtml(url) + '</a></div>';
+        if (meta.description) basicHtml += '<div style="font-size:13px;color:#4b5563;margin-bottom:8px;line-height:1.6;">' + escapeHtml(meta.description) + '</div>';
+        basicHtml += '</div></div>';
+        // 基本属性表格
+        const basicRows = [
+            ['语言', meta.language || '-'],
+            ['HTTP 状态', c.status_code || res.status_code || '-'],
+            ['页面大小', (c.size || res.size || 0) + ' 字节'],
+            ['链接数量', (c.links_count || 0) + ' 个'],
+            ['图片数量', (c.images_count || 0) + ' 个'],
+            ['关键词', meta.keywords || '-'],
+        ];
+        basicHtml += '<div style="margin-top:12px;">' + basicRows.map(r =>
+            '<div class="stat-detail-row"><span>' + r[0] + '</span><span>' + escapeHtml(String(r[1])) + '</span></div>'
+        ).join('') + '</div>';
+        document.getElementById('cr-basic').innerHTML = basicHtml;
+
+        // ===== 联系方式 =====
+        let contactsHtml = '';
+        if (c.emails && c.emails.length) {
+            contactsHtml += '<div style="margin-bottom:12px;"><div style="font-size:12px;font-weight:600;color:#6b7280;margin-bottom:6px;">📧 邮箱 (' + c.emails.length + ')</div>';
+            contactsHtml += c.emails.map(e => '<div style="font-size:13px;padding:4px 0;"><a href="mailto:' + escapeHtml(e) + '" style="color:#667eea;">' + escapeHtml(e) + '</a></div>').join('');
+            contactsHtml += '</div>';
+        }
+        if (c.phones && c.phones.length) {
+            contactsHtml += '<div style="margin-bottom:12px;"><div style="font-size:12px;font-weight:600;color:#6b7280;margin-bottom:6px;">📞 电话 (' + c.phones.length + ')</div>';
+            contactsHtml += c.phones.map(p => '<div style="font-size:13px;padding:4px 0;">' + escapeHtml(p) + '</div>').join('');
+            contactsHtml += '</div>';
+        }
+        if (c.address) {
+            contactsHtml += '<div><div style="font-size:12px;font-weight:600;color:#6b7280;margin-bottom:6px;">📍 地址</div><div style="font-size:13px;color:#374151;line-height:1.6;">' + escapeHtml(c.address) + '</div></div>';
+        }
+        document.getElementById('cr-contacts').innerHTML = contactsHtml || '<div style="color:#9ca3af;font-size:13px;">未提取到联系方式</div>';
+
+        // ===== 产品与服务 =====
+        if (c.products && c.products.length) {
+            document.getElementById('cr-products').innerHTML = c.products.map(p => '<span class="badge" style="margin:3px;display:inline-block;padding:4px 10px;">' + escapeHtml(p) + '</span>').join(' ');
+        } else {
+            document.getElementById('cr-products').innerHTML = '<div style="color:#9ca3af;font-size:13px;">未提取到产品关键词</div>';
+        }
+
+        // ===== 认证资质 =====
+        if (c.certifications && c.certifications.length) {
+            document.getElementById('cr-certs').innerHTML = c.certifications.map(cert =>
+                '<span class="badge" style="margin:3px;display:inline-block;padding:4px 12px;background:#d1fae5;color:#065f46;">✅ ' + escapeHtml(cert) + '</span>'
+            ).join(' ');
+        } else {
+            document.getElementById('cr-certs').innerHTML = '<div style="color:#9ca3af;font-size:13px;">未检测到认证标识</div>';
+        }
+
+        // ===== 社交媒体 =====
+        if (c.social_links && c.social_links.length) {
+            const icons = { 'Facebook': '📘', 'Twitter': '🐦', 'LinkedIn': '💼', 'YouTube': '▶️', 'Instagram': '📷', 'WhatsApp': '💬', 'WeChat': '💚', 'Pinterest': '📌', 'TikTok': '🎵' };
+            document.getElementById('cr-social').innerHTML = c.social_links.map(s =>
+                '<a href="' + escapeHtml(s.url) + '" target="_blank" style="display:inline-flex;align-items:center;gap:6px;margin:3px;padding:6px 12px;background:#eef2ff;color:#4f46e5;border-radius:8px;font-size:13px;text-decoration:none;">' +
+                (icons[s.platform] || '🔗') + ' ' + escapeHtml(s.platform) + '</a>'
+            ).join(' ');
+        } else {
+            document.getElementById('cr-social').innerHTML = '<div style="color:#9ca3af;font-size:13px;">未找到社交媒体链接</div>';
+        }
+
+        // ===== 关键页面 =====
+        if (c.key_pages && c.key_pages.length) {
+            document.getElementById('cr-pages').innerHTML = c.key_pages.map(p =>
+                '<a href="' + escapeHtml(p.url) + '" target="_blank" style="display:inline-flex;align-items:center;gap:6px;margin:3px;padding:8px 14px;background:#f3f4f6;color:#374151;border-radius:8px;font-size:13px;text-decoration:none;border:1px solid #e5e7eb;">🔗 ' + escapeHtml(p.name) + '</a>'
+            ).join(' ');
+        } else {
+            document.getElementById('cr-pages').innerHTML = '<div style="color:#9ca3af;font-size:13px;">未识别到关键页面</div>';
+        }
+
+        // ===== 页面结构（标题）=====
+        if (c.headings && c.headings.length) {
+            document.getElementById('cr-headings').innerHTML = c.headings.map(h => {
+                const indent = h.level === 'h1' ? 0 : h.level === 'h2' ? 16 : 32;
+                const fontSize = h.level === 'h1' ? '15px' : h.level === 'h2' ? '14px' : '13px';
+                const color = h.level === 'h1' ? '#1f2937' : h.level === 'h2' ? '#374151' : '#6b7280';
+                return '<div style="margin-left:' + indent + 'px;font-size:' + fontSize + ';color:' + color + ';padding:3px 0;border-left:2px solid #e5e7eb;padding-left:8px;">' + escapeHtml(h.text) + '</div>';
+            }).join('');
+        } else {
+            document.getElementById('cr-headings').innerHTML = '<div style="color:#9ca3af;font-size:13px;">未提取到标题结构</div>';
+        }
+
+        // ===== 页面内容预览 =====
+        document.getElementById('cr-content').textContent = res.content || c.content || '(无内容)';
+
+        // ===== full 模式：显示评分 + 暴露一键入CRM =====
+        if (mode !== 'basic' && res.score && res.crm_data) {
+            _crawlCrmData = res.crm_data;
+            document.getElementById('cr-crm-btn').style.display = 'inline-flex';
+            const sc = res.score;
+            showAlert('cr-success', '✅ 爬取完成 | 自动评分: ' + sc.total_score + ' 分 / ' + sc.level + '级 | 可点击「一键入CRM」保存', 'success');
+        } else {
+            _crawlCrmData = null;
+            showAlert('cr-success', '✅ 爬取完成', 'success');
+        }
+    } catch (e) {
+        showAlert('cr-alert', e.message, 'error');
+    } finally {
+        btn.disabled = false; btn.innerHTML = '🚀 一键完整爬取';
+    }
 }
 
-async function extractContacts() {
-    const url = document.getElementById('cr-url').value.trim();
-    if (!url) { showAlert('cr-alert', '请输入网站URL', 'error'); return; }
+async function crawlAddToCRM() {
+    if (!_crawlCrmData) { showAlert('cr-alert', '无可用数据', 'error'); return; }
     try {
-        const res = await api('/crawl/extract-contacts', 'POST', { url });
-        document.getElementById('cr-result-card').style.display = 'block';
-        document.getElementById('cr-url-show').textContent = res.url;
-        let html = '<div style="padding:12px;background:#f9fafb;border-radius:8px;">';
-        if (res.emails && res.emails.length) {
-            html += '<div style="margin-bottom:8px;"><strong style="font-size:12px;">📧 邮箱：</strong>';
-            html += res.emails.map(e => '<span class="badge" style="margin:2px;">' + escapeHtml(e) + '</span>').join(' ');
-            html += '</div>';
-        }
-        if (res.phones && res.phones.length) {
-            html += '<div style="margin-bottom:8px;"><strong style="font-size:12px;">📞 电话：</strong>';
-            html += res.phones.map(p => '<span class="badge" style="margin:2px;">' + escapeHtml(p) + '</span>').join(' ');
-            html += '</div>';
-        }
-        html += '</div>';
-        document.getElementById('cr-contacts').innerHTML = html;
-    } catch (e) { showAlert('cr-alert', e.message, 'error'); }
+        await api('/crm/customers', 'POST', _crawlCrmData);
+        showAlert('cr-success', '✅ 已添加到CRM：' + _crawlCrmData.company_name + '（' + _crawlCrmData.level + '级 / ' + _crawlCrmData.score + '分）', 'success');
+        document.getElementById('cr-crm-btn').style.display = 'none';
+    } catch (e) { showAlert('cr-alert', '入CRM失败: ' + e.message, 'error'); }
 }
 
 async function scoreCustomer() {

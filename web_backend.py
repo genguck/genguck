@@ -191,10 +191,20 @@ def _real_search(industry: str, count: int = 5, region: str = "") -> List[Dict]:
     return companies[:count]
 
 def _crawl_company_info(url: str) -> Dict:
-    """爬取公司网站提取联系信息"""
+    """爬取公司网站提取联系信息（分类结构）"""
     if not _is_safe_url(url):
         return {"emails": [], "phones": [], "address": "", "note": "URL不安全（SSRF防护）"}
-    info = {"emails": [], "phones": [], "address": "", "products": [], "certifications": [], "note": ""}
+    info = {
+        "emails": [], "phones": [], "address": "",
+        "products": [], "certifications": [], "note": "",
+        # 新增分类
+        "meta": {"title": "", "description": "", "keywords": "", "language": "", "favicon": ""},
+        "social_links": [],
+        "key_pages": [],
+        "headings": [],
+        "links_count": 0,
+        "images_count": 0,
+    }
     try:
         resp = requests.get(url, timeout=10, headers={"User-Agent": "Mozilla/5.0"}, allow_redirects=False)
         if resp.status_code != 200:
@@ -202,28 +212,107 @@ def _crawl_company_info(url: str) -> Dict:
             return info
         soup = BeautifulSoup(resp.text, 'html.parser')
         text = soup.get_text(' ', strip=True)
-        # 提取邮箱
+        # ===== Meta 信息 =====
+        if soup.title:
+            info["meta"]["title"] = (soup.title.string or "").strip()[:200]
+        meta_desc = soup.find('meta', attrs={'name': 'description'}) or soup.find('meta', attrs={'property': 'og:description'})
+        if meta_desc and meta_desc.get('content'):
+            info["meta"]["description"] = meta_desc['content'].strip()[:500]
+        meta_kw = soup.find('meta', attrs={'name': 'keywords'})
+        if meta_kw and meta_kw.get('content'):
+            info["meta"]["keywords"] = meta_kw['content'].strip()[:300]
+        html_tag = soup.find('html')
+        if html_tag and html_tag.get('lang'):
+            info["meta"]["language"] = html_tag['lang']
+        favicon = soup.find('link', rel='icon') or soup.find('link', rel='shortcut icon')
+        if favicon and favicon.get('href'):
+            info["meta"]["favicon"] = urljoin(url, favicon['href'])
+        # ===== 邮箱 =====
         for m in EMAIL_RE.findall(resp.text)[:20]:
             domain = m.split('@')[-1].lower()
             if domain in FREE_EMAIL or 'noreply' in m.lower() or 'example.com' in m:
                 continue
             if m not in info["emails"]:
                 info["emails"].append(m)
-        # 提取电话
+        # ===== 电话 =====
         for m in PHONE_RE.findall(text)[:10]:
             phone = ''.join(m).strip()
             if len(phone) >= 7 and phone not in info["phones"]:
                 info["phones"].append(phone)
-        # 提取地址
+        # ===== 地址 =====
         addr_match = re.search(r'(?:Address|地址|Location|Headquarters|HQ)[:\s]*([^\n]{10,200})', text, re.IGNORECASE)
         if addr_match:
             addr = addr_match.group(1).strip()
             addr = re.sub(r'(window\.|document\.|var |function |return |\$\(|\{\s*|\}\s*)', '', addr)
             info["address"] = addr[:200]
-        # 认证
-        for cert in ['ISO 9001', 'ISO 14001', 'CE', 'FDA', 'UL', 'FCC', 'RoHS']:
+        # ===== 认证 =====
+        for cert in ['ISO 9001', 'ISO 14001', 'ISO 45001', 'CE', 'FDA', 'UL', 'FCC', 'RoHS', 'GS', 'EAC', 'PSE', 'SAA', 'CSA']:
             if cert.lower() in text.lower() and cert not in info["certifications"]:
                 info["certifications"].append(cert)
+        # ===== 产品关键词（从常见区块提取）=====
+        product_keywords = set()
+        for kw in ['Products', 'Services', 'Solutions', '产品', '服务', '解决方案']:
+            for tag in soup.find_all(['h2', 'h3', 'h4'], string=re.compile(kw, re.I)):
+                for sib in tag.find_next_siblings()[:3]:
+                    for li in sib.find_all('li')[:8]:
+                        t = li.get_text(strip=True)
+                        if 2 <= len(t) <= 60:
+                            product_keywords.add(t)
+        # 从 meta keywords 也提取
+        if info["meta"]["keywords"]:
+            for k in info["meta"]["keywords"].split(','):
+                k = k.strip()
+                if 2 <= len(k) <= 40:
+                    product_keywords.add(k)
+        info["products"] = list(product_keywords)[:15]
+        # ===== 社交链接 =====
+        social_patterns = {
+            'Facebook': r'facebook\.com/',
+            'Twitter': r'(?:twitter|x)\.com/',
+            'LinkedIn': r'linkedin\.com/',
+            'YouTube': r'youtube\.com/',
+            'Instagram': r'instagram\.com/',
+            'WhatsApp': r'(?:wa\.me/|whatsapp\.com/)',
+            'WeChat': r'weixin\.qq\.com',
+            'Pinterest': r'pinterest\.',
+            'TikTok': r'tiktok\.com/',
+        }
+        seen_social = set()
+        for a in soup.find_all('a', href=True):
+            href = a['href']
+            for name, pat in social_patterns.items():
+                if re.search(pat, href, re.I) and name not in seen_social:
+                    info["social_links"].append({"platform": name, "url": href})
+                    seen_social.add(name)
+                    break
+        # ===== 关键页面链接（About / Contact / Products）=====
+        key_keywords = {
+            'About Us': ['about', 'about-us', 'company', '关于'],
+            'Contact': ['contact', 'contact-us', 'get-in-touch', '联系'],
+            'Products': ['product', 'products', 'solutions', 'services', '产品'],
+            'News': ['news', 'blog', 'media', '新闻'],
+            'Careers': ['career', 'jobs', 'join-us', '招聘'],
+        }
+        seen_page = set()
+        for a in soup.find_all('a', href=True):
+            href = a['href']
+            text_a = (a.get_text(strip=True) or href).lower()
+            for name, kws in key_keywords.items():
+                if name in seen_page:
+                    continue
+                if any(kw in href.lower() or kw in text_a for kw in kws):
+                    full = urljoin(url, href)
+                    if _is_safe_url(full):
+                        info["key_pages"].append({"name": name, "url": full})
+                        seen_page.add(name)
+        # ===== 标题结构（h1-h3）=====
+        for h in soup.find_all(['h1', 'h2', 'h3'])[:12]:
+            t = h.get_text(strip=True)
+            if 2 <= len(t) <= 80:
+                info["headings"].append({"level": h.name, "text": t})
+        # ===== 统计 =====
+        info["links_count"] = len(soup.find_all('a', href=True))
+        info["images_count"] = len(soup.find_all('img'))
         info["note"] = f"爬取成功 ({len(resp.text)} 字节)"
     except Exception as e:
         info["note"] = f"爬取失败: {str(e)[:50]}"
@@ -418,12 +507,28 @@ async def crawl_website(req: CrawlRequest, user: str = Depends(get_current_user)
     try:
         resp = requests.get(req.url, timeout=10, headers={"User-Agent": "Mozilla/5.0"}, allow_redirects=False)
         soup = BeautifulSoup(resp.text, 'html.parser')
+        # 调用统一分类提取器，合并页面内容预览
+        info = _crawl_company_info(req.url)
+        # _crawl_company_info 内部已请求一次，这里直接复用其结构并补充 content/size/status
         return {
             "url": req.url,
-            "title": soup.title.string if soup.title else "",
+            "title": info["meta"].get("title", "") or (soup.title.string if soup.title else ""),
             "content": soup.get_text(' ', strip=True)[:5000],
             "size": len(resp.text),
-            "note": f"爬取成功 {resp.status_code}"
+            "status_code": resp.status_code,
+            "note": f"爬取成功 {resp.status_code}",
+            # 分类结构
+            "meta": info["meta"],
+            "emails": info["emails"],
+            "phones": info["phones"],
+            "address": info["address"],
+            "products": info["products"],
+            "certifications": info["certifications"],
+            "social_links": info["social_links"],
+            "key_pages": info["key_pages"],
+            "headings": info["headings"],
+            "links_count": info.get("links_count", 0),
+            "images_count": info.get("images_count", 0),
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -434,6 +539,39 @@ async def extract_contacts(req: CrawlRequest, user: str = Depends(get_current_us
         raise HTTPException(status_code=400, detail="URL不安全（SSRF防护）")
     info = _crawl_company_info(req.url)
     return {"url": req.url, **info}
+
+@app.post("/api/crawl/full")
+async def crawl_full(req: CrawlRequest, user: str = Depends(get_current_user)):
+    """一键完整爬取：返回分类详情 + 自动评分 + 一键入CRM所需数据"""
+    if not _is_safe_url(req.url):
+        raise HTTPException(status_code=400, detail="URL不安全（SSRF防护）")
+    info = _crawl_company_info(req.url)
+    # 自动评分
+    company = {
+        "company_name": info["meta"].get("title", "") or urlparse(req.url).hostname or "",
+        "website": req.url,
+        "emails": info["emails"],
+        "phones": info["phones"],
+        "industry": "",
+        "address": info["address"],
+    }
+    score_result = _evaluate_company(company, "")
+    return {
+        "url": req.url,
+        "crawl": info,
+        "score": score_result,
+        "crm_data": {
+            "company_name": company["company_name"],
+            "website": req.url,
+            "email": info["emails"][0] if info["emails"] else "",
+            "phone": info["phones"][0] if info["phones"] else "",
+            "industry": "",
+            "score": score_result["total_score"],
+            "level": score_result["level"],
+            "status": "待开发",
+            "notes": info["address"][:100] if info["address"] else "",
+        },
+    }
 
 @app.post("/api/email/generate")
 async def generate_email(req: EmailGenerateRequest, user: str = Depends(get_current_user)):
