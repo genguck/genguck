@@ -406,6 +406,11 @@ class EmailSendRequest(BaseModel):
 class CrawlRequest(BaseModel):
     url: str
 
+class TranslateRequest(BaseModel):
+    text: str
+    target: str = "zh-CN"
+    source: str = "auto"
+
 class CRMAddRequest(BaseModel):
     company_name: str
     website: str = ""
@@ -572,6 +577,121 @@ async def crawl_full(req: CrawlRequest, user: str = Depends(get_current_user)):
             "notes": info["address"][:100] if info["address"] else "",
         },
     }
+
+# ==================== 翻译 ====================
+# 外贸领域常见英译中词汇表（当在线翻译不可用时降级使用）
+_GLOSSARY = {
+    'about us': '关于我们', 'contact': '联系', 'contact us': '联系我们', 'products': '产品',
+    'solutions': '解决方案', 'services': '服务', 'company': '公司', 'home': '首页',
+    'semiconductor': '半导体', 'electronics': '电子产品', 'furniture': '家具', 'textile': '纺织',
+    'machinery': '机械', 'automotive': '汽车', 'manufacturer': '制造商', 'supplier': '供应商',
+    'distributor': '分销商', 'quality': '质量', 'innovation': '创新', 'technology': '技术',
+    'address': '地址', 'phone': '电话', 'email': '邮箱', 'headquarters': '总部',
+    'careers': '招聘', 'news': '新闻', 'blog': '博客', 'overview': '概述',
+    'industrial': '工业', 'automotive parts': '汽车零部件', 'oem': '原始设备制造商',
+    'certified': '认证', 'global': '全球', 'leading': '领先的', 'reliable': '可靠的',
+    'competitive price': '有竞争力价格', 'fast delivery': '快速交付', 'after-sales': '售后',
+    'cooperation': '合作', 'partnership': '合作伙伴', 'solution': '解决方案',
+    # 扩充
+    'engineers': '工程师', 'systems': '系统', 'smarter': '更智能', 'safer': '更安全',
+    'efficient': '高效', 'efficient systems': '高效系统', 'helps': '帮助', 'build': '构建',
+    'with': '使用', 'and': '和', 'more': '更', 'the': '', 'our': '我们的', 'their': '他们的',
+    'solutions for': '解决方案', 'industries': '行业', 'enterprise': '企业',
+    'professional': '专业', 'custom': '定制', 'customized': '定制化', 'design': '设计',
+    'development': '开发', 'research': '研究', 'production': '生产', 'factory': '工厂',
+    'export': '出口', 'import': '进口', 'trade': '贸易', 'wholesale': '批发',
+    'retail': '零售', 'pricing': '定价', 'quote': '报价', 'inquiry': '询价',
+    'sample': '样品', 'catalog': '目录', 'brochure': '手册', 'specification': '规格',
+    'warranty': '质保', 'support': '支持', 'service team': '服务团队',
+    'battery management': '电池管理', 'intelligent chassis': '智能底盘', 'vehicle autonomy': '车辆自动驾驶',
+    'innovation': '创新', 'building blocks': '构建模块', 'chips': '芯片',
+    'embedded processing': '嵌入式处理', 'analog': '模拟', 'power management': '电源管理',
+    'microcontroller': '微控制器', 'sensor': '传感器', 'connectivity': '连接性',
+    'internet of things': '物联网', 'iot': '物联网', 'cloud': '云', 'data center': '数据中心',
+    'personal electronics': '个人电子产品', 'consumer': '消费', 'medical': '医疗',
+    'healthcare': '医疗保健', 'telecom': '电信', 'telecommunications': '电信',
+    'energy': '能源', 'renewable': '可再生能源', 'solar': '太阳能', 'lighting': '照明',
+}
+
+def _local_translate(text: str) -> str:
+    """本地降级翻译（基于词汇表）"""
+    result = text
+    for en, zh in _GLOSSARY.items():
+        result = re.sub(re.escape(en), zh, result, flags=re.IGNORECASE)
+    return result
+
+@app.post("/api/translate")
+async def translate_text(req: TranslateRequest, user: str = Depends(get_current_user)):
+    """文本翻译：依次尝试 MyMemory / LibreTranslate，全部失败降级到本地词汇表"""
+    text = (req.text or "").strip()
+    if not text:
+        return {"original": "", "translated": "", "method": "empty"}
+    src = req.source if req.source != "auto" else "en"
+    # 1. MyMemory 在线翻译（免费，无需 Key，单次 ~500 字）
+    try:
+        chunks = _split_text(text, 480)
+        parts = []
+        ok = False
+        for chunk in chunks:
+            url = "https://api.mymemory.translated.net/get"
+            params = {"q": chunk, "langpair": f"{src}|{req.target}"}
+            resp = requests.get(url, params=params, timeout=8, headers={"User-Agent": "Mozilla/5.0"})
+            if resp.status_code == 200:
+                data = resp.json()
+                t = data.get("responseData", {}).get("translatedText", "")
+                # 检测限流/错误响应
+                if t and "MYMEMORY WARNING" not in str(t).upper() and "QUOTA" not in str(t).upper() and not str(t).lower().startswith("error"):
+                    parts.append(t)
+                    ok = True
+                else:
+                    parts.append(chunk)  # 失败保留原文
+            else:
+                parts.append(chunk)
+            time.sleep(0.2)
+        if ok:
+            translated = " ".join(parts).strip()
+            if translated:
+                return {"original": text, "translated": translated, "source_lang": src, "method": "online-mymemory"}
+    except Exception:
+        pass
+    # 2. LibreTranslate 备用公共实例
+    try:
+        url = "https://libretranslate.com/translate"
+        payload = {"q": text[:3000], "source": src, "target": req.target, "format": "text"}
+        resp = requests.post(url, json=payload, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
+        if resp.status_code == 200:
+            data = resp.json()
+            t = data.get("translatedText", "")
+            if t:
+                return {"original": text, "translated": t, "source_lang": src, "method": "online-libre"}
+    except Exception:
+        pass
+    # 3. 降级：本地词汇表翻译
+    translated = _local_translate(text)
+    return {"original": text, "translated": translated, "method": "local-glossary"}
+
+def _split_text(text: str, max_len: int) -> List[str]:
+    """按句号/换行/长度切分文本，避免超过翻译接口长度限制"""
+    if len(text) <= max_len:
+        return [text]
+    # 优先按句号切
+    import re as _re
+    sentences = _re.split(r'(?<=[.!?。！？\n])\s*', text)
+    chunks, cur = [], ""
+    for s in sentences:
+        if len(cur) + len(s) + 1 <= max_len:
+            cur = (cur + " " + s).strip()
+        else:
+            if cur: chunks.append(cur)
+            if len(s) <= max_len:
+                cur = s
+            else:
+                # 超长句按长度硬切
+                for i in range(0, len(s), max_len):
+                    chunks.append(s[i:i + max_len])
+                cur = ""
+    if cur: chunks.append(cur)
+    return chunks
 
 @app.post("/api/email/generate")
 async def generate_email(req: EmailGenerateRequest, user: str = Depends(get_current_user)):

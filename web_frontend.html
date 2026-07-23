@@ -289,8 +289,14 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC'
         <div id="cr-result-area" style="display:none;">
             <!-- 基本信息 -->
             <div class="card">
-                <div class="card-title">📄 基本信息</div>
+                <div class="card-title">📄 基本信息 <button class="btn btn-sm btn-info" style="margin-left:auto;" onclick="translateBlock('description')">🌐 翻译描述</button></div>
                 <div id="cr-basic"></div>
+                <div id="cr-desc-translate" style="display:none;margin-top:10px;padding:10px;background:#eff6ff;border-radius:8px;font-size:13px;color:#1e40af;border-left:3px solid #3b82f6;"></div>
+            </div>
+            <!-- 📧 获取到的邮箱（突出展示）-->
+            <div class="card" id="cr-emails-card">
+                <div class="card-title">📧 获取到的邮箱 <span id="cr-emails-count" style="font-size:12px;color:#6b7280;font-weight:400;"></span> <button class="btn btn-sm btn-success" style="margin-left:auto;" id="cr-copy-all-btn" onclick="copyAllEmails()">📋 复制全部</button></div>
+                <div id="cr-emails-list"></div>
             </div>
             <div class="two-col">
                 <!-- 联系方式 -->
@@ -300,8 +306,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC'
                 </div>
                 <!-- 产品与服务 -->
                 <div class="card">
-                    <div class="card-title">🏭 产品与服务</div>
+                    <div class="card-title">🏭 产品与服务 <button class="btn btn-sm btn-info" style="margin-left:auto;" onclick="translateBlock('products')">🌐 翻译</button></div>
                     <div id="cr-products"></div>
+                    <div id="cr-products-translate" style="display:none;margin-top:10px;padding:10px;background:#eff6ff;border-radius:8px;font-size:13px;color:#1e40af;border-left:3px solid #3b82f6;"></div>
                 </div>
             </div>
             <div class="two-col">
@@ -325,8 +332,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC'
                 <div id="cr-headings"></div>
             </div>
             <div class="card">
-                <div class="card-title">📝 页面内容预览</div>
+                <div class="card-title">📝 页面内容预览 <button class="btn btn-sm btn-info" style="margin-left:auto;" onclick="translateBlock('content')">🌐 翻译全文</button></div>
                 <div class="email-preview" id="cr-content" style="max-height:300px;"></div>
+                <div id="cr-content-translate" style="display:none;margin-top:10px;padding:10px;background:#eff6ff;border-radius:8px;font-size:13px;color:#1e40af;border-left:3px solid #3b82f6;max-height:300px;overflow-y:auto;white-space:pre-wrap;"></div>
             </div>
         </div>
     </div>
@@ -1068,13 +1076,29 @@ async function crawlWebsite(mode) {
         ).join('') + '</div>';
         document.getElementById('cr-basic').innerHTML = basicHtml;
 
-        // ===== 联系方式 =====
-        let contactsHtml = '';
-        if (c.emails && c.emails.length) {
-            contactsHtml += '<div style="margin-bottom:12px;"><div style="font-size:12px;font-weight:600;color:#6b7280;margin-bottom:6px;">📧 邮箱 (' + c.emails.length + ')</div>';
-            contactsHtml += c.emails.map(e => '<div style="font-size:13px;padding:4px 0;"><a href="mailto:' + escapeHtml(e) + '" style="color:#667eea;">' + escapeHtml(e) + '</a></div>').join('');
-            contactsHtml += '</div>';
+        // ===== 获取到的邮箱（突出卡片）=====
+        const emails = c.emails || [];
+        document.getElementById('cr-emails-count').textContent = '(' + emails.length + ' 个)';
+        if (emails.length > 0) {
+            document.getElementById('cr-emails-list').innerHTML = emails.map((e, i) =>
+                '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:#f9fafb;border-radius:8px;margin-bottom:8px;border:1px solid #e5e7eb;">' +
+                    '<div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1;">' +
+                        '<span style="font-size:16px;">📧</span>' +
+                        '<a href="mailto:' + escapeHtml(e) + '" style="color:#667eea;font-size:14px;word-break:break-all;">' + escapeHtml(e) + '</a>' +
+                    '</div>' +
+                    '<div style="display:flex;gap:6px;flex-shrink:0;">' +
+                        '<button class="btn btn-sm btn-ghost" onclick="copyOneEmail(\'' + escapeHtml(e).replace(/'/g, "\\'") + '\')" style="background:#eef2ff;color:#4f46e5;">📋 复制</button>' +
+                    '</div>' +
+                '</div>'
+            ).join('');
+            document.getElementById('cr-copy-all-btn').style.display = 'inline-flex';
+        } else {
+            document.getElementById('cr-emails-list').innerHTML = '<div style="padding:12px;background:#fef2f2;border-radius:8px;color:#991b1b;font-size:13px;text-align:center;">⚠️ 未获取到邮箱（可能页面未公开邮箱或需登录访问）</div>';
+            document.getElementById('cr-copy-all-btn').style.display = 'none';
         }
+
+        // ===== 联系方式（电话+地址，邮箱已单独展示）=====
+        let contactsHtml = '';
         if (c.phones && c.phones.length) {
             contactsHtml += '<div style="margin-bottom:12px;"><div style="font-size:12px;font-weight:600;color:#6b7280;margin-bottom:6px;">📞 电话 (' + c.phones.length + ')</div>';
             contactsHtml += c.phones.map(p => '<div style="font-size:13px;padding:4px 0;">' + escapeHtml(p) + '</div>').join('');
@@ -1083,7 +1107,8 @@ async function crawlWebsite(mode) {
         if (c.address) {
             contactsHtml += '<div><div style="font-size:12px;font-weight:600;color:#6b7280;margin-bottom:6px;">📍 地址</div><div style="font-size:13px;color:#374151;line-height:1.6;">' + escapeHtml(c.address) + '</div></div>';
         }
-        document.getElementById('cr-contacts').innerHTML = contactsHtml || '<div style="color:#9ca3af;font-size:13px;">未提取到联系方式</div>';
+        if (!contactsHtml) contactsHtml = '<div style="color:#9ca3af;font-size:13px;">未提取到电话和地址</div>';
+        document.getElementById('cr-contacts').innerHTML = contactsHtml;
 
         // ===== 产品与服务 =====
         if (c.products && c.products.length) {
@@ -1160,6 +1185,62 @@ async function crawlAddToCRM() {
         showAlert('cr-success', '✅ 已添加到CRM：' + _crawlCrmData.company_name + '（' + _crawlCrmData.level + '级 / ' + _crawlCrmData.score + '分）', 'success');
         document.getElementById('cr-crm-btn').style.display = 'none';
     } catch (e) { showAlert('cr-alert', '入CRM失败: ' + e.message, 'error'); }
+}
+
+// ==================== 邮箱复制 ====================
+function _copyToClipboard(text, okMsg) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(() => {
+            showAlert('cr-success', okMsg, 'success');
+        }).catch(() => _copyFallback(text, okMsg));
+    } else {
+        _copyFallback(text, okMsg);
+    }
+}
+function _copyFallback(text, okMsg) {
+    try {
+        const ta = document.createElement('textarea');
+        ta.value = text; document.body.appendChild(ta); ta.select();
+        document.execCommand('copy'); document.body.removeChild(ta);
+        showAlert('cr-success', okMsg, 'success');
+    } catch (e) { showAlert('cr-alert', '复制失败，请手动复制', 'error'); }
+}
+function copyOneEmail(email) {
+    _copyToClipboard(email, '📋 已复制邮箱：' + email);
+}
+function copyAllEmails() {
+    const items = document.querySelectorAll('#cr-emails-list a[href^="mailto:"]');
+    const emails = Array.from(items).map(a => a.getAttribute('href').replace('mailto:', ''));
+    if (emails.length === 0) { showAlert('cr-alert', '无邮箱可复制', 'error'); return; }
+    _copyToClipboard(emails.join('\n'), '📋 已复制 ' + emails.length + ' 个邮箱');
+}
+
+// ==================== 翻译 ====================
+async function translateBlock(field) {
+    // 根据 field 取原始文本
+    let text = '';
+    if (field === 'description') {
+        const descEl = document.querySelector('#cr-basic div div[style*="line-height"]');
+        text = descEl ? descEl.textContent.trim() : '';
+    } else if (field === 'products') {
+        const badges = document.querySelectorAll('#cr-products .badge');
+        text = Array.from(badges).map(b => b.textContent).join(', ');
+    } else if (field === 'content') {
+        text = document.getElementById('cr-content').textContent || '';
+    }
+    if (!text) { showAlert('cr-alert', '无可翻译的内容', 'error'); return; }
+    // 内容过长截断（避免翻译接口超时）
+    const truncated = text.length > 3000 ? text.slice(0, 3000) + '...(已截断)' : text;
+    const targetEl = document.getElementById('cr-' + field + '-translate');
+    targetEl.style.display = 'block';
+    targetEl.innerHTML = '<span class="loading"></span>翻译中...';
+    try {
+        const res = await api('/translate', 'POST', { text: truncated, target: 'zh-CN' });
+        const methodTag = res.method === 'online' ? '🌐 在线翻译' : '📖 本地词表';
+        targetEl.innerHTML = '<div style="font-size:11px;color:#3b82f6;margin-bottom:6px;">' + methodTag + (res.source_lang ? ' · 源语言: ' + res.source_lang : '') + '</div>' + escapeHtml(res.translated || '(无翻译结果)');
+    } catch (e) {
+        targetEl.innerHTML = '<span style="color:#ef4444;">翻译失败：' + escapeHtml(e.message) + '</span>';
+    }
 }
 
 async function scoreCustomer() {
