@@ -22,6 +22,10 @@ from pathlib import Path
 from typing import Dict, List, Optional, Any
 from urllib.parse import urljoin, urlparse
 
+from dotenv import load_dotenv
+
+load_dotenv()  # 从 .env 文件加载环境变量（.env 不会被上传到 GitHub）
+
 import requests
 from bs4 import BeautifulSoup
 from fastapi import Depends, FastAPI, HTTPException, Request, status
