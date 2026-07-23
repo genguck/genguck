@@ -38,7 +38,7 @@ CRM_DB = DATA_DIR / "crm_customers.json"
 EMAIL_HISTORY = DATA_DIR / "email_history.json"
 SMTP_CONFIG = DATA_DIR / "smtp_config.json"
 
-API_KEY = os.getenv("WAIMAO_API_KEY", "sk-1247a1fea10b4f4db70d83dbc64edc97")
+API_KEY = os.getenv("WAIMAO_API_KEY") or secrets.token_urlsafe(24)
 HOST = os.getenv("WAIMAO_HOST", "0.0.0.0")
 PORT = int(os.getenv("WAIMAO_PORT", "8000"))
 
@@ -1162,4 +1162,9 @@ async def dashboard_stats(user: str = Depends(get_current_user)):
 
 if __name__ == "__main__":
     import uvicorn
+    print(f"\n{'='*50}")
+    print(f"  Agent外贸获客 服务启动")
+    print(f"  API Key: {API_KEY}")
+    print(f"  访问地址: http://localhost:{PORT}")
+    print(f"{'='*50}\n")
     uvicorn.run(app, host=HOST, port=PORT)
