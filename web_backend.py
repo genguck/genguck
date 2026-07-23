@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Agent外贸获客 rendae - FastAPI 后端服务
-基于第一性原理设计：API Key 认证 + 速率限制 + SSRF/XSS 防护 + 真实数据爬取
+基于Agent外贸获客设计：API Key 认证 + 速率限制 + SSRF/XSS 防护 + 真实数据爬取
 """
 import asyncio
 import hashlib
