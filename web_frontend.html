@@ -333,6 +333,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC'
             <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
                 <button class="btn btn-warning" onclick="generateEmail()">生成邮件</button>
                 <button class="btn btn-success" onclick="sendEmail()">📨 发送邮件</button>
+                <button class="btn" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;" onclick="autoGenerateAll()">⚡ 一键AI生成</button>
                 <span id="em-smtp-status" style="margin-left:8px;font-size:12px;color:#6b7280;"></span>
             </div>
             <div class="alert alert-info" id="em-alert" style="margin-top:12px;"></div>
@@ -628,7 +629,7 @@ function renderSearchResults() {
             '<div class="customer-footer">' +
                 '<span class="level-badge level-' + c.level + '">' + c.score + '分 ' + c.level + '级</span>' +
                 '<div class="action-btns">' +
-                    '<button class="btn btn-sm btn-info" onclick="fillAndGoEmail(' + i + ')">发邮件</button>' +
+                    '<button class="btn btn-sm btn-info" onclick="fillAndGoEmail(' + i + ')">🤖 AI生成</button>' +
                     '<button class="btn btn-sm btn-success" onclick="addOneToCRM(' + i + ')">加CRM</button>' +
                 '</div>' +
             '</div>' +
@@ -638,10 +639,16 @@ function renderSearchResults() {
 
 function fillAndGoEmail(idx) {
     const c = _searchResults[idx];
-    document.getElementById('em-company').value = c.company_name;
+    document.getElementById('em-company').value = c.company_name || '';
     document.getElementById('em-to').value = c.email || (c.emails && c.emails[0]) || '';
-    document.getElementById('em-industry').value = document.getElementById('sc-industry').value;
+    document.getElementById('em-industry').value = c.industry || document.getElementById('sc-industry').value || '';
+    document.getElementById('em-product').value = (c.products && c.products[0]) || '';
+    document.getElementById('em-contact').value = c.contact_person || '';
+    // 自动选中AI合作型并生成
+    selectEmailType('ai');
     switchTab('email');
+    // 延迟自动生成
+    setTimeout(() => { generateEmail(); }, 300);
 }
 
 async function addOneToCRM(idx) {
@@ -764,6 +771,38 @@ function selectEmailType(type) {
             b.style.transform = '';
         }
     });
+}
+
+// 示例数据库 - 用于一键AI生成
+const SAMPLE_DATA = [
+    { company: 'Texas Instruments', industry: 'electronics', product: 'semiconductor', contact: 'John Smith', email: 'support@ti.com' },
+    { company: 'IKEA', industry: 'furniture', product: 'office chair', contact: 'Anna Lindberg', email: 'partner@ikea.com' },
+    { company: 'Inditex', industry: 'textile', product: 'cotton fabric', contact: 'Pablo Garcia', email: 'supply@inditex.com' },
+    { company: 'Caterpillar', industry: 'machinery', product: 'hydraulic pump', contact: 'Mike Johnson', email: 'procurement@cat.com' },
+    { company: 'Toyota', industry: 'automotive', product: 'brake system', contact: 'Tanaka San', email: 'supplier@toyota.com' },
+];
+
+async function autoGenerateAll() {
+    const key = localStorage.getItem('api_key');
+    if (!key) {
+        alert('请先在顶部输入 API Key 登录！');
+        document.getElementById('api-key-input').focus();
+        return;
+    }
+    // 随机选一组示例数据
+    const sample = SAMPLE_DATA[Math.floor(Math.random() * SAMPLE_DATA.length)];
+    // 自动填入
+    document.getElementById('em-company').value = sample.company;
+    document.getElementById('em-industry').value = sample.industry;
+    document.getElementById('em-product').value = sample.product;
+    document.getElementById('em-contact').value = sample.contact;
+    document.getElementById('em-to').value = sample.email;
+    // 随机选一种AI类型
+    const aiTypes = ['ai', 'ai_supplier', 'ai_inquiry', 'ai_product', 'ai_invitation', 'ai_sample', 'ai_agency', 'ai_followup'];
+    const randomType = aiTypes[Math.floor(Math.random() * aiTypes.length)];
+    selectEmailType(randomType);
+    // 自动生成
+    await generateEmail();
 }
 
 async function generateEmail() {
