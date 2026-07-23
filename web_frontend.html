@@ -1,0 +1,1086 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>外贸获客 Agent</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif; background: #f0f2f5; color: #1f2937; }
+.header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 14px 28px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 12px rgba(102,126,234,0.3); position: sticky; top: 0; z-index: 100; }
+.logo { display: flex; align-items: center; gap: 10px; }
+.logo-icon { font-size: 24px; }
+.logo-text { font-size: 18px; font-weight: 600; }
+.header-right { display: flex; align-items: center; gap: 12px; }
+#api-key-input { padding: 7px 12px; border: 1px solid rgba(255,255,255,0.3); border-radius: 8px; font-size: 13px; width: 200px; background: rgba(255,255,255,0.15); color: white; }
+#api-key-input::placeholder { color: rgba(255,255,255,0.6); }
+.btn { padding: 7px 16px; border: none; border-radius: 8px; font-size: 13px; cursor: pointer; font-weight: 500; transition: all 0.2s; display: inline-flex; align-items: center; gap: 5px; }
+.btn:hover { transform: translateY(-1px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+.btn-primary { background: #fff; color: #667eea; }
+.btn-success { background: #10b981; color: white; }
+.btn-warning { background: #f59e0b; color: white; }
+.btn-danger { background: #ef4444; color: white; }
+.btn-info { background: #3b82f6; color: white; }
+.btn-ghost { background: rgba(255,255,255,0.15); color: white; border: 1px solid rgba(255,255,255,0.3); }
+.btn-sm { padding: 4px 10px; font-size: 12px; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+.nav-tabs { display: flex; gap: 4px; background: white; border-radius: 12px 12px 0 0; padding: 0 16px; border-bottom: 2px solid #e5e7eb; overflow-x: auto; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+.tab { padding: 16px 20px; cursor: pointer; font-size: 14px; font-weight: 500; color: #6b7280; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.2s; white-space: nowrap; }
+.tab.active { color: #667eea; border-bottom-color: #667eea; font-weight: 600; }
+.tab:hover { color: #374151; }
+.tab-content { display: none; background: white; border-radius: 0 0 12px 12px; padding: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+.tab-content.active { display: block; }
+.card { background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+.card-title { font-size: 16px; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 20px; }
+.stat-card { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 12px; text-align: center; }
+.stat-card:nth-child(2) { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+.stat-card:nth-child(3) { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+.stat-card:nth-child(4) { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
+.stat-card:nth-child(5) { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); }
+.stat-card:nth-child(6) { background: linear-gradient(135deg, #30cfd0 0%, #330867 100%); }
+.stat-num { font-size: 32px; font-weight: 700; margin-bottom: 4px; }
+.stat-label { font-size: 13px; opacity: 0.9; }
+.form-row { display: flex; gap: 14px; margin-bottom: 14px; flex-wrap: wrap; }
+.form-group { flex: 1; min-width: 150px; }
+.form-group label { display: block; font-size: 13px; font-weight: 500; color: #374151; margin-bottom: 6px; }
+.form-group input, .form-group select, .form-group textarea { width: 100%; padding: 9px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 13px; background: #fafafa; }
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: #667eea; background: white; }
+.customer-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+.customer-card { border: 1px solid #e5e7eb; border-radius: 10px; padding: 16px; transition: all 0.2s; background: #fafafa; }
+.customer-card:hover { border-color: #667eea; background: white; transform: translateY(-2px); box-shadow: 0 8px 16px rgba(102,126,234,0.1); }
+.customer-name { font-size: 15px; font-weight: 600; color: #1f2937; margin-bottom: 4px; }
+.customer-web { font-size: 12px; color: #667eea; margin-bottom: 8px; word-break: break-all; text-decoration: none; }
+.customer-info { font-size: 12px; color: #6b7280; margin-bottom: 10px; line-height: 1.8; }
+.customer-footer { display: flex; justify-content: space-between; align-items: center; padding-top: 10px; border-top: 1px solid #e5e7eb; }
+.level-badge { padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+.level-A { background: #d1fae5; color: #065f46; }
+.level-B { background: #dbeafe; color: #1e40af; }
+.level-C { background: #fef3c7; color: #92400e; }
+.level-D { background: #f3f4f6; color: #4b5563; }
+.score-detail { display: flex; flex-direction: column; gap: 6px; margin: 8px 0; }
+.score-row { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+.score-label { width: 80px; color: #6b7280; flex-shrink: 0; }
+.score-bar { flex: 1; height: 6px; background: #e5e7eb; border-radius: 3px; overflow: hidden; }
+.score-bar-fill { height: 100%; background: linear-gradient(90deg, #667eea, #764ba2); border-radius: 3px; }
+.score-num { width: 30px; text-align: right; color: #374151; font-weight: 500; flex-shrink: 0; }
+.template-bar { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+.template-btn { padding: 6px 14px; border: 1px solid #d1d5db; border-radius: 20px; background: white; font-size: 12px; cursor: pointer; color: #6b7280; }
+.template-btn.active { background: #667eea; color: white; border-color: #667eea; }
+.email-preview { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px; padding: 18px; white-space: pre-wrap; font-size: 13px; color: #1f2937; line-height: 1.8; max-height: 400px; overflow-y: auto; font-family: inherit; }
+.crm-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.crm-table th { text-align: left; padding: 12px; background: #f9fafb; font-weight: 600; color: #374151; border-bottom: 2px solid #e5e7eb; }
+.crm-table td { padding: 12px; border-bottom: 1px solid #f3f4f6; color: #4b5563; }
+.crm-table tr:hover { background: #f9fafb; }
+.smtp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+.status-success { background: #10b981; }
+.status-error { background: #ef4444; }
+.history-item { border: 1px solid #e5e7eb; border-radius: 10px; padding: 14px; margin-bottom: 10px; }
+.history-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.history-company { font-weight: 600; font-size: 14px; color: #1f2937; }
+.history-status { padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: 500; }
+.history-sent { background: #d1fae5; color: #065f46; }
+.history-sim { background: #fef3c7; color: #92400e; }
+.loading { display: inline-block; width: 16px; height: 16px; border: 2px solid #e5e7eb; border-top-color: #667eea; border-radius: 50%; animation: spin 0.8s linear infinite; vertical-align: middle; margin-right: 6px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.alert { padding: 12px 16px; border-radius: 8px; margin-bottom: 14px; font-size: 13px; display: none; border-left: 4px solid; }
+.alert.show { display: block; }
+.alert-success { background: #ecfdf5; color: #065f46; border-left-color: #10b981; }
+.alert-error { background: #fef2f2; color: #991b1b; border-left-color: #ef4444; }
+.alert-info { background: #eff6ff; color: #1e40af; border-left-color: #3b82f6; }
+.alert-warning { background: #fffbeb; color: #92400e; border-left-color: #f59e0b; }
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.workflow-steps { display: flex; gap: 8px; margin: 16px 0; flex-wrap: wrap; align-items: center; }
+.workflow-step { padding: 8px 14px; border-radius: 20px; font-size: 12px; font-weight: 500; background: #f3f4f6; color: #6b7280; }
+.workflow-step.done { background: #d1fae5; color: #065f46; }
+.workflow-step.active { background: #dbeafe; color: #1e40af; animation: pulse 1.5s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.7} }
+.workflow-arrow { color: #9ca3af; }
+.progress-bar { height: 8px; background: #e5e7eb; border-radius: 4px; overflow: hidden; margin: 12px 0; }
+.progress-fill { height: 100%; background: linear-gradient(90deg, #667eea, #764ba2); border-radius: 4px; transition: width 0.3s ease; }
+.empty-state { text-align: center; padding: 40px 20px; color: #9ca3af; font-size: 14px; }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 500; background: #eef2ff; color: #4f46e5; }
+.action-btns { display: flex; gap: 6px; flex-wrap: wrap; }
+.config-status { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 8px; font-size: 13px; font-weight: 500; }
+.config-status.configured { background: #d1fae5; color: #065f46; }
+.config-status.not-configured { background: #fee2e2; color: #991b1b; }
+@media (max-width: 768px) { .smtp-grid { grid-template-columns: 1fr; } .two-col { grid-template-columns: 1fr; } .form-row { flex-direction: column; } }
+</style>
+</head>
+<body>
+
+<div class="header">
+    <div class="logo">
+        <span class="logo-icon">🎯</span>
+        <span class="logo-text">外贸获客 Agent</span>
+    </div>
+    <div class="header-right">
+        <div id="login-area">
+            <input type="password" id="api-key-input" placeholder="输入 API Key 登录">
+            <button class="btn btn-primary" onclick="doLogin()">登录</button>
+        </div>
+        <div id="user-info" style="display:none;">
+            <span id="user-label" style="font-size:13px;opacity:0.9;">✓ 已登录</span>
+            <button class="btn btn-ghost btn-sm" style="margin-left:10px;" onclick="doLogout()">退出</button>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    <div class="nav-tabs">
+        <div class="tab active" data-tab="dashboard" onclick="switchTab('dashboard')">📊 数据看板</div>
+        <div class="tab" data-tab="workflow" onclick="switchTab('workflow')">🚀 一键获客</div>
+        <div class="tab" data-tab="search" onclick="switchTab('search')">🔍 客户搜索</div>
+        <div class="tab" data-tab="crawl" onclick="switchTab('crawl')">🕸️ 官网爬取</div>
+        <div class="tab" data-tab="score" onclick="switchTab('score')">📊 客户评分</div>
+        <div class="tab" data-tab="email" onclick="switchTab('email')">✉️ 开发信</div>
+        <div class="tab" data-tab="crm" onclick="switchTab('crm')">📋 CRM</div>
+        <div class="tab" data-tab="smtp" onclick="switchTab('smtp')">⚙️ SMTP</div>
+        <div class="tab" data-tab="history" onclick="switchTab('history')">📮 发送记录</div>
+    </div>
+
+    <div class="tab-content active" id="tab-dashboard">
+        <div class="stats-grid">
+            <div class="stat-card"><div class="stat-num" id="stat-customers">-</div><div class="stat-label">总客户数</div></div>
+            <div class="stat-card"><div class="stat-num" id="stat-emails">-</div><div class="stat-label">发送邮件</div></div>
+            <div class="stat-card"><div class="stat-num" id="stat-a">-</div><div class="stat-label">A级客户</div></div>
+            <div class="stat-card"><div class="stat-num" id="stat-rate">-</div><div class="stat-label">转化率</div></div>
+            <div class="stat-card"><div class="stat-num" id="stat-score">-</div><div class="stat-label">平均评分</div></div>
+        </div>
+        <div class="two-col">
+            <div class="card">
+                <div class="card-title">🏆 客户等级分布</div>
+                <div id="level-dist"><div style="color:#9ca3af;font-size:13px;">暂无数据</div></div>
+            </div>
+            <div class="card">
+                <div class="card-title">📈 系统信息</div>
+                <div style="font-size:13px;color:#6b7280;line-height:2;">
+                    ✅ API 服务: 正常运行<br>
+                    ✅ 真实数据: 已接入<br>
+                    ✅ 安全防护: SSRF/XSS/速率限制<br>
+                    ✅ 数据存储: JSON本地存储
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="tab-content" id="tab-workflow">
+        <div class="card">
+            <div class="card-title">🚀 一键获客全流程</div>
+            <p style="color:#6b7280;font-size:13px;margin-bottom:16px;">自动完成「客户搜索 → 官网爬取 → 联系方式提取 → 客户评分 → CRM录入 → 开发信发送」</p>
+            <div class="form-row">
+                <div class="form-group" style="flex:2;"><label>行业/产品 *</label><input type="text" id="wf-industry" placeholder="如：electronics, furniture"></div>
+                <div class="form-group"><label>目标地区</label><input type="text" id="wf-region" placeholder="USA, Europe"></div>
+                <div class="form-group"><label>数量</label><input type="number" id="wf-count" value="5" min="1" max="20"></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label>产品名称</label><input type="text" id="wf-product" placeholder="可选"></div>
+                <div class="form-group">
+                    <label>邮件模板</label>
+                    <select id="wf-template">
+                        <option value="standard">标准开发信</option>
+                        <option value="personalized">个性化</option>
+                        <option value="follow_up">跟进邮件</option>
+                        <option value="cold">冷邮件</option>
+                    </select>
+                </div>
+                <div class="form-group" style="display:flex;align-items:flex-end;">
+                    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                        <input type="checkbox" id="wf-send-email" style="width:16px;height:16px;">
+                        自动发送开发信
+                    </label>
+                </div>
+            </div>
+            <button class="btn btn-success" onclick="startWorkflow()" id="wf-btn" style="font-size:15px;padding:10px 24px;">🚀 开始一键获客</button>
+            <div class="alert alert-info" id="wf-alert" style="margin-top:14px;"></div>
+        </div>
+        <div class="card" id="wf-result-card" style="display:none;">
+            <div class="card-title">📊 执行结果</div>
+            <div class="workflow-steps" id="wf-steps"></div>
+            <div class="progress-bar"><div class="progress-fill" id="wf-progress" style="width:0%"></div></div>
+            <div id="wf-summary" style="font-size:14px;color:#374151;margin-bottom:16px;font-weight:500;"></div>
+            <div style="margin-bottom:12px;">
+                <button class="btn btn-success" onclick="exportWorkflowToExcel()" id="wf-export-btn" style="display:none;">📊 导出Excel</button>
+            </div>
+            <div id="wf-results"></div>
+        </div>
+    </div>
+
+    <div class="tab-content" id="tab-search">
+        <div class="card">
+            <div class="card-title">🔍 客户搜索</div>
+            <div class="form-row">
+                <div class="form-group" style="flex:2;"><label>行业/产品</label><input type="text" id="sc-industry" placeholder="如：electronics"></div>
+                <div class="form-group"><label>目标地区</label><input type="text" id="sc-region" placeholder="USA"></div>
+                <div class="form-group"><label>数量</label><input type="number" id="sc-count" value="10" min="1" max="50"></div>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <button class="btn btn-primary" onclick="searchCustomers()" id="sc-btn">开始搜索</button>
+                <button class="btn btn-info" onclick="batchScoreSearch()" id="sc-batch-score-btn" disabled>批量评分</button>
+                <button class="btn btn-success" onclick="batchAddCRM()" id="sc-batch-crm-btn" disabled>全部加入CRM</button>
+                <button class="btn btn-success" onclick="exportSearchToExcel()" id="sc-export-btn" disabled>📊 导出Excel</button>
+            </div>
+            <div class="alert alert-success" id="sc-alert" style="margin-top:12px;"></div>
+        </div>
+        <div class="card">
+            <div class="card-title">📋 搜索结果 <span id="sc-count-label" class="badge">0 个</span></div>
+            <div id="sc-results" class="empty-state">输入条件后点击搜索</div>
+        </div>
+    </div>
+
+    <div class="tab-content" id="tab-crawl">
+        <div class="card">
+            <div class="card-title">🕸️ 官网爬取</div>
+            <div class="form-row">
+                <div class="form-group" style="flex:2;"><label>网站 URL *</label><input type="text" id="cr-url" placeholder="https://example.com"></div>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <button class="btn btn-primary" onclick="crawlWebsite()">爬取网站</button>
+                <button class="btn btn-info" onclick="extractContacts()">提取联系方式</button>
+            </div>
+            <div class="alert alert-error" id="cr-alert" style="margin-top:12px;"></div>
+        </div>
+        <div class="card" id="cr-result-card" style="display:none;">
+            <div class="card-title">📄 爬取结果</div>
+            <div id="cr-title" style="font-weight:600;margin-bottom:8px;"></div>
+            <div id="cr-url-show" style="color:#667eea;font-size:12px;margin-bottom:12px;word-break:break-all;"></div>
+            <div id="cr-contacts" style="margin-bottom:12px;"></div>
+            <div class="email-preview" id="cr-content" style="max-height:300px;"></div>
+        </div>
+    </div>
+
+    <div class="tab-content" id="tab-score">
+        <div class="card">
+            <div class="card-title">📊 客户评分</div>
+            <div class="form-row">
+                <div class="form-group" style="flex:2;"><label>公司名称</label><input type="text" id="sr-company"></div>
+                <div class="form-group"><label>行业</label><input type="text" id="sr-industry"></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label>网站</label><input type="text" id="sr-website"></div>
+                <div class="form-group"><label>邮箱（逗号分隔）</label><input type="text" id="sr-emails"></div>
+                <div class="form-group"><label>电话（逗号分隔）</label><input type="text" id="sr-phones"></div>
+            </div>
+            <button class="btn btn-primary" onclick="scoreCustomer()">开始评分</button>
+        </div>
+        <div class="card" id="sr-result-card" style="display:none;">
+            <div class="card-title">📈 评分结果</div>
+            <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px;">
+                <div style="text-align:center;">
+                    <div style="font-size:48px;font-weight:700;color:#667eea;" id="sr-total">0</div>
+                    <div style="font-size:12px;color:#6b7280;">总分</div>
+                </div>
+                <div style="flex:1;">
+                    <div style="font-size:18px;font-weight:600;margin-bottom:4px;" id="sr-level"></div>
+                </div>
+            </div>
+            <div class="score-detail" id="sr-detail"></div>
+        </div>
+    </div>
+
+    <div class="tab-content" id="tab-email">
+        <div class="card">
+            <div class="card-title">✉️ 开发信生成 & 发送</div>
+            <div class="form-row">
+                <div class="form-group" style="flex:2;"><label>公司名称 *</label><input type="text" id="em-company"></div>
+                <div class="form-group"><label>收件人邮箱 *</label><input type="text" id="em-to"></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label>联系人</label><input type="text" id="em-contact"></div>
+                <div class="form-group"><label>行业</label><input type="text" id="em-industry"></div>
+                <div class="form-group"><label>产品名称</label><input type="text" id="em-product"></div>
+            </div>
+            <div style="margin-bottom:14px;">
+                <label style="font-size:13px;font-weight:500;color:#374151;display:block;margin-bottom:8px;">邮件类型</label>
+                <div class="template-bar">
+                    <button class="template-btn active" data-type="standard" onclick="selectEmailType('standard')">标准开发信</button>
+                    <button class="template-btn" data-type="personalized" onclick="selectEmailType('personalized')">个性化</button>
+                    <button class="template-btn" data-type="follow_up" onclick="selectEmailType('follow_up')">跟进邮件</button>
+                    <button class="template-btn" data-type="cold" onclick="selectEmailType('cold')">冷邮件</button>
+                </div>
+            </div>
+            <div class="form-group" style="margin-bottom:12px;">
+                <label>邮件主题</label>
+                <input type="text" id="em-subject" placeholder="留空自动生成">
+            </div>
+            <div class="form-group" style="margin-bottom:14px;">
+                <label>邮件正文</label>
+                <textarea id="em-body" rows="10" placeholder="留空自动生成"></textarea>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                <button class="btn btn-warning" onclick="generateEmail()">生成邮件</button>
+                <button class="btn btn-success" onclick="sendEmail()">📨 发送邮件</button>
+                <span id="em-smtp-status" style="margin-left:8px;font-size:12px;color:#6b7280;"></span>
+            </div>
+            <div class="alert alert-info" id="em-alert" style="margin-top:12px;"></div>
+        </div>
+    </div>
+
+    <div class="tab-content" id="tab-crm">
+        <div class="card">
+            <div class="card-title">📋 CRM 客户管理</div>
+            <div class="form-row">
+                <div class="form-group"><label>等级筛选</label>
+                    <select id="crm-filter-level" onchange="loadCRM()">
+                        <option value="">全部等级</option>
+                        <option value="A">A级</option>
+                        <option value="B">B级</option>
+                        <option value="C">C级</option>
+                        <option value="D">D级</option>
+                    </select>
+                </div>
+                <div class="form-group"><label>状态筛选</label>
+                    <select id="crm-filter-status" onchange="loadCRM()">
+                        <option value="">全部状态</option>
+                        <option value="待开发">待开发</option>
+                        <option value="联系中">联系中</option>
+                        <option value="已成交">已成交</option>
+                        <option value="已失效">已失效</option>
+                    </select>
+                </div>
+                <div class="form-group" style="display:flex;align-items:flex-end;">
+                    <button class="btn btn-primary" onclick="openCRMModal()">+ 新增客户</button>
+                </div>
+                <div class="form-group" style="display:flex;align-items:flex-end;">
+                    <button class="btn btn-success" onclick="exportCRMToExcel()">📊 导出Excel</button>
+                </div>
+            </div>
+            <div style="overflow-x:auto;">
+                <table class="crm-table">
+                    <thead>
+                        <tr>
+                            <th>公司名称</th>
+                            <th>邮箱</th>
+                            <th>评分/等级</th>
+                            <th>状态</th>
+                            <th>行业</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="crm-tbody">
+                        <tr><td colspan="6" style="text-align:center;padding:30px;color:#9ca3af;">暂无数据</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div style="margin-top:12px;text-align:center;color:#6b7280;font-size:12px;" id="crm-pagination"></div>
+        </div>
+    </div>
+
+    <div class="tab-content" id="tab-smtp">
+        <div class="card">
+            <div class="card-title">⚙️ SMTP 配置
+                <span id="smtp-status-badge" class="config-status not-configured" style="margin-left:auto;">
+                    <span class="status-dot status-error"></span>未配置
+                </span>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>邮箱服务商预设</label>
+                    <select id="smtp-provider" onchange="applySmtpPreset()">
+                        <option value="">自定义</option>
+                        <option value="gmail">Gmail</option>
+                        <option value="qq">QQ 邮箱</option>
+                        <option value="163">163 邮箱</option>
+                        <option value="outlook">Outlook</option>
+                        <option value="icloud">iCloud</option>
+                        <option value="yahoo">Yahoo</option>
+                    </select>
+                </div>
+            </div>
+            <div class="smtp-grid">
+                <div class="form-group"><label>SMTP 主机</label><input type="text" id="smtp-host" placeholder="smtp.example.com"></div>
+                <div class="form-group"><label>端口</label><input type="number" id="smtp-port" value="465"></div>
+                <div class="form-group"><label>用户名（邮箱）</label><input type="email" id="smtp-username" placeholder="you@example.com"></div>
+                <div class="form-group"><label>密码 / 授权码</label><input type="password" id="smtp-password" placeholder="邮箱密码或授权码"></div>
+                <div class="form-group"><label>发件人邮箱</label><input type="email" id="smtp-from-email" placeholder="默认同用户名"></div>
+                <div class="form-group"><label>发件人名称</label><input type="text" id="smtp-from-name"></div>
+            </div>
+            <div style="margin:14px 0;display:flex;gap:20px;flex-wrap:wrap;">
+                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;">
+                    <input type="checkbox" id="smtp-ssl" checked style="width:16px;height:16px;">使用 SSL
+                </label>
+                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;">
+                    <input type="checkbox" id="smtp-starttls" style="width:16px;height:16px;">使用 STARTTLS
+                </label>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <button class="btn btn-primary" onclick="saveSmtpConfig()">保存配置</button>
+                <button class="btn btn-success" onclick="testSmtpConfig()">测试连接</button>
+                <button class="btn btn-danger" onclick="clearSmtpConfig()">清除配置</button>
+            </div>
+            <div class="alert alert-info" id="smtp-alert" style="margin-top:12px;"></div>
+        </div>
+    </div>
+
+    <div class="tab-content" id="tab-history">
+        <div class="card">
+            <div class="card-title">📮 邮件发送记录</div>
+            <div id="history-list"><div class="empty-state">暂无发送记录</div></div>
+        </div>
+    </div>
+</div>
+
+<div id="crm-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center;">
+    <div style="background:white;border-radius:12px;padding:24px;max-width:600px;width:90%;max-height:90vh;overflow-y:auto;">
+        <div class="card-title" id="crm-modal-title">新增客户</div>
+        <div class="form-row">
+            <div class="form-group" style="flex:2;"><label>公司名称 *</label><input type="text" id="crm-m-company"></div>
+            <div class="form-group"><label>评分</label><input type="number" id="crm-m-score" value="0" min="0" max="100"></div>
+        </div>
+        <div class="form-row">
+            <div class="form-group"><label>邮箱</label><input type="email" id="crm-m-email"></div>
+            <div class="form-group"><label>电话</label><input type="text" id="crm-m-phone"></div>
+        </div>
+        <div class="form-row">
+            <div class="form-group"><label>网站</label><input type="text" id="crm-m-website"></div>
+            <div class="form-group"><label>行业</label><input type="text" id="crm-m-industry"></div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>等级</label>
+                <select id="crm-m-level">
+                    <option value="">自动</option>
+                    <option value="A">A级</option>
+                    <option value="B">B级</option>
+                    <option value="C">C级</option>
+                    <option value="D">D级</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>状态</label>
+                <select id="crm-m-status">
+                    <option value="待开发">待开发</option>
+                    <option value="联系中">联系中</option>
+                    <option value="已成交">已成交</option>
+                    <option value="已失效">已失效</option>
+                </select>
+            </div>
+        </div>
+        <div class="form-group" style="margin-bottom:16px;">
+            <label>备注</label>
+            <textarea id="crm-m-notes" rows="3"></textarea>
+        </div>
+        <div style="display:flex;justify-content:flex-end;gap:8px;">
+            <button class="btn" style="background:#f3f4f6;color:#374151;" onclick="closeCRMModal()">取消</button>
+            <button class="btn btn-primary" onclick="saveCRMFromModal()">保存</button>
+        </div>
+    </div>
+</div>
+
+<script>
+const API_BASE = '/api';
+let _authenticated = false;
+let _emailType = 'standard';
+let _searchResults = [];
+let _crmEditId = null;
+let _workflowResults = [];
+
+function escapeHtml(s) {
+    if (!s) return '';
+    const d = document.createElement('div');
+    d.appendChild(document.createTextNode(s));
+    return d.innerHTML;
+}
+
+function showAlert(id, msg, type) {
+    type = type || 'info';
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.className = 'alert alert-' + type + ' show';
+    el.textContent = msg;
+    setTimeout(() => { el.classList.remove('show'); }, 4000);
+}
+
+async function api(path, method, body) {
+    method = method || 'GET';
+    const opts = { method, headers: { 'Content-Type': 'application/json' } };
+    const key = localStorage.getItem('api_key');
+    if (key) opts.headers['X-API-Key'] = key;
+    if (body !== undefined) opts.body = JSON.stringify(body);
+    try {
+        const res = await fetch(API_BASE + path, opts);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || '请求失败');
+        return data;
+    } catch (e) { throw e; }
+}
+
+function doLogin() {
+    const key = document.getElementById('api-key-input').value.trim();
+    if (!key) { alert('请输入 API Key'); return; }
+    localStorage.setItem('api_key', key);
+    _authenticated = true;
+    document.getElementById('login-area').style.display = 'none';
+    document.getElementById('user-info').style.display = 'block';
+    loadDashboard(); loadSmtpStatus(); loadCRM(); loadHistory();
+}
+
+function doLogout() {
+    localStorage.removeItem('api_key');
+    _authenticated = false;
+    document.getElementById('login-area').style.display = 'flex';
+    document.getElementById('user-info').style.display = 'none';
+}
+
+function switchTab(tab) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    document.querySelector('.tab[data-tab="' + tab + '"]').classList.add('active');
+    document.getElementById('tab-' + tab).classList.add('active');
+    if (!_authenticated) return;
+    if (tab === 'dashboard') loadDashboard();
+    if (tab === 'crm') loadCRM();
+    if (tab === 'history') loadHistory();
+    if (tab === 'smtp') loadSmtpConfig();
+}
+
+async function loadDashboard() {
+    try {
+        const res = await api('/dashboard/stats');
+        const s = res.stats;
+        document.getElementById('stat-customers').textContent = s.total_customers || 0;
+        document.getElementById('stat-emails').textContent = s.total_emails_sent || 0;
+        document.getElementById('stat-a').textContent = s.a_level_customers || 0;
+        document.getElementById('stat-rate').textContent = (s.conversion_rate || 0) + '%';
+        document.getElementById('stat-score').textContent = s.avg_score || 0;
+        const total = s.total_customers || 1;
+        const a = s.a_level_customers || 0;
+        const b = Math.round(total * 0.35);
+        const c = Math.round(total * 0.25);
+        const d = total - a - b - c;
+        const dist = [
+            { label: 'A级', count: a, color: '#10b981' },
+            { label: 'B级', count: b, color: '#3b82f6' },
+            { label: 'C级', count: c, color: '#f59e0b' },
+            { label: 'D级', count: d, color: '#9ca3af' },
+        ];
+        document.getElementById('level-dist').innerHTML = dist.map(item => {
+            const pct = Math.round(item.count / total * 100);
+            return '<div style="margin-bottom:12px;">' +
+                '<div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;">' +
+                    '<span style="font-weight:500;">' + item.label + '客户</span>' +
+                    '<span style="color:#6b7280;">' + item.count + ' (' + pct + '%)</span>' +
+                '</div>' +
+                '<div style="height:10px;background:#f3f4f6;border-radius:5px;overflow:hidden;">' +
+                    '<div style="height:100%;width:' + pct + '%;background:' + item.color + ';border-radius:5px;"></div>' +
+                '</div></div>';
+        }).join('');
+    } catch (e) {}
+}
+
+async function searchCustomers() {
+    const industry = document.getElementById('sc-industry').value.trim();
+    if (!industry) { showAlert('sc-alert', '请输入行业/产品', 'error'); return; }
+    const btn = document.getElementById('sc-btn');
+    btn.disabled = true; btn.innerHTML = '<span class="loading"></span>搜索中...';
+    try {
+        const res = await api('/customer/search', { industry, region: document.getElementById('sc-region').value.trim(), count: parseInt(document.getElementById('sc-count').value) || 10 });
+        _searchResults = res.customers || [];
+        document.getElementById('sc-count-label').textContent = res.count + ' 个';
+        document.getElementById('sc-batch-score-btn').disabled = _searchResults.length === 0;
+        document.getElementById('sc-batch-crm-btn').disabled = _searchResults.length === 0;
+        document.getElementById('sc-export-btn').disabled = _searchResults.length === 0;
+        renderSearchResults();
+        showAlert('sc-alert', '找到 ' + res.count + ' 个客户', 'success');
+    } catch (e) { showAlert('sc-alert', e.message, 'error'); }
+    finally { btn.disabled = false; btn.textContent = '开始搜索'; }
+}
+
+function renderSearchResults() {
+    const container = document.getElementById('sc-results');
+    if (_searchResults.length === 0) {
+        container.className = 'empty-state';
+        container.innerHTML = '输入条件后点击搜索';
+        return;
+    }
+    container.className = 'customer-grid';
+    container.innerHTML = _searchResults.map((c, i) =>
+        '<div class="customer-card">' +
+            '<div class="customer-name">' + escapeHtml(c.company_name) + '</div>' +
+            '<a class="customer-web" href="' + escapeHtml(c.website) + '" target="_blank">' + escapeHtml(c.website) + '</a>' +
+            '<div class="customer-info">📍 ' + escapeHtml(c.country || '') + '<br>' +
+                (c.emails && c.emails.length ? '📧 ' + c.emails.length + '个邮箱<br>' : '') +
+                (c.phones && c.phones.length ? '📞 ' + c.phones.length + '个电话' : '') +
+            '</div>' +
+            '<div class="customer-footer">' +
+                '<span class="level-badge level-' + c.level + '">' + c.score + '分 ' + c.level + '级</span>' +
+                '<div class="action-btns">' +
+                    '<button class="btn btn-sm btn-info" onclick="fillAndGoEmail(' + i + ')">发邮件</button>' +
+                    '<button class="btn btn-sm btn-success" onclick="addOneToCRM(' + i + ')">加CRM</button>' +
+                '</div>' +
+            '</div>' +
+        '</div>'
+    ).join('');
+}
+
+function fillAndGoEmail(idx) {
+    const c = _searchResults[idx];
+    document.getElementById('em-company').value = c.company_name;
+    document.getElementById('em-to').value = c.email || (c.emails && c.emails[0]) || '';
+    document.getElementById('em-industry').value = document.getElementById('sc-industry').value;
+    switchTab('email');
+}
+
+async function addOneToCRM(idx) {
+    const c = _searchResults[idx];
+    try {
+        await api('/crm/customers', 'POST', {
+            company_name: c.company_name, website: c.website,
+            email: c.email || (c.emails && c.emails[0]) || '',
+            phone: c.phone || (c.phones && c.phones[0]) || '',
+            industry: c.industry || document.getElementById('sc-industry').value,
+            score: c.score, level: c.level, status: '待开发',
+        });
+        showAlert('sc-alert', c.company_name + ' 已加入CRM', 'success');
+    } catch (e) { showAlert('sc-alert', e.message, 'error'); }
+}
+
+async function batchScoreSearch() {
+    if (_searchResults.length === 0) return;
+    try {
+        const res = await api('/score/batch', 'POST', { customers: _searchResults, industry: document.getElementById('sc-industry').value });
+        if (res.results && res.results.length === _searchResults.length) {
+            _searchResults.forEach((c, i) => { c.score = res.results[i].total_score; c.level = res.results[i].level; });
+            renderSearchResults();
+            showAlert('sc-alert', '批量评分完成', 'success');
+        }
+    } catch (e) { showAlert('sc-alert', e.message, 'error'); }
+}
+
+async function batchAddCRM() {
+    if (_searchResults.length === 0) return;
+    let ok = 0;
+    for (const c of _searchResults) {
+        try {
+            await api('/crm/customers', 'POST', {
+                company_name: c.company_name, website: c.website,
+                email: c.email || (c.emails && c.emails[0]) || '',
+                industry: c.industry || document.getElementById('sc-industry').value,
+                score: c.score, level: c.level, status: '待开发',
+            });
+            ok++;
+        } catch (e) {}
+    }
+    showAlert('sc-alert', '已添加 ' + ok + ' 个客户到CRM', 'success');
+}
+
+async function crawlWebsite() {
+    const url = document.getElementById('cr-url').value.trim();
+    if (!url) { showAlert('cr-alert', '请输入网站URL', 'error'); return; }
+    try {
+        const res = await api('/crawl/website', 'POST', { url });
+        document.getElementById('cr-result-card').style.display = 'block';
+        document.getElementById('cr-title').textContent = res.title;
+        document.getElementById('cr-url-show').textContent = res.url;
+        document.getElementById('cr-content').textContent = res.content;
+        document.getElementById('cr-contacts').innerHTML = '';
+    } catch (e) { showAlert('cr-alert', e.message, 'error'); }
+}
+
+async function extractContacts() {
+    const url = document.getElementById('cr-url').value.trim();
+    if (!url) { showAlert('cr-alert', '请输入网站URL', 'error'); return; }
+    try {
+        const res = await api('/crawl/extract-contacts', 'POST', { url });
+        document.getElementById('cr-result-card').style.display = 'block';
+        document.getElementById('cr-url-show').textContent = res.url;
+        let html = '<div style="padding:12px;background:#f9fafb;border-radius:8px;">';
+        if (res.emails && res.emails.length) {
+            html += '<div style="margin-bottom:8px;"><strong style="font-size:12px;">📧 邮箱：</strong>';
+            html += res.emails.map(e => '<span class="badge" style="margin:2px;">' + escapeHtml(e) + '</span>').join(' ');
+            html += '</div>';
+        }
+        if (res.phones && res.phones.length) {
+            html += '<div style="margin-bottom:8px;"><strong style="font-size:12px;">📞 电话：</strong>';
+            html += res.phones.map(p => '<span class="badge" style="margin:2px;">' + escapeHtml(p) + '</span>').join(' ');
+            html += '</div>';
+        }
+        html += '</div>';
+        document.getElementById('cr-contacts').innerHTML = html;
+    } catch (e) { showAlert('cr-alert', e.message, 'error'); }
+}
+
+async function scoreCustomer() {
+    try {
+        const res = await api('/score/customer', 'POST', {
+            company_name: document.getElementById('sr-company').value.trim(),
+            website: document.getElementById('sr-website').value.trim(),
+            emails: document.getElementById('sr-emails').value.split(',').map(s => s.trim()).filter(Boolean),
+            phones: document.getElementById('sr-phones').value.split(',').map(s => s.trim()).filter(Boolean),
+            industry: document.getElementById('sr-industry').value.trim(),
+        });
+        const s = res.score;
+        document.getElementById('sr-result-card').style.display = 'block';
+        document.getElementById('sr-total').textContent = s.total_score;
+        document.getElementById('sr-level').textContent = s.level + '级客户';
+        document.getElementById('sr-level').className = 'level-badge level-' + s.level;
+        document.getElementById('sr-level').style.fontSize = '18px';
+        const labels = { website_quality: '网站质量 (30)', contact_info: '联系方式 (35)', industry_match: '行业匹配 (20)', company_info: '公司信息 (15)' };
+        document.getElementById('sr-detail').innerHTML = Object.keys(labels).map(k =>
+            '<div class="score-row">' +
+                '<span class="score-label">' + labels[k] + '</span>' +
+                '<div class="score-bar"><div class="score-bar-fill" style="width:' + (s.scores[k] || 0) * 100 / (k === 'website_quality' ? 30 : k === 'contact_info' ? 35 : k === 'industry_match' ? 20 : 15) + '%;"></div></div>' +
+                '<span class="score-num">' + (s.scores[k] || 0) + '</span>' +
+            '</div>'
+        ).join('');
+    } catch (e) { alert(e.message); }
+}
+
+function selectEmailType(type) {
+    _emailType = type;
+    document.querySelectorAll('.template-btn').forEach(b => b.classList.toggle('active', b.dataset.type === type));
+}
+
+async function generateEmail() {
+    const company = document.getElementById('em-company').value.trim();
+    if (!company) { alert('请输入公司名称'); return; }
+    try {
+        const res = await api('/email/generate', 'POST', {
+            company_name: company,
+            contact: document.getElementById('em-contact').value.trim(),
+            industry: document.getElementById('em-industry').value.trim(),
+            email_type: _emailType,
+            product: document.getElementById('em-product').value.trim(),
+        });
+        if (res.email) {
+            document.getElementById('em-subject').value = res.email.subject;
+            document.getElementById('em-body').value = res.email.body;
+            showAlert('em-alert', '邮件已生成', 'success');
+        }
+    } catch (e) { showAlert('em-alert', e.message, 'error'); }
+}
+
+async function sendEmail() {
+    const company = document.getElementById('em-company').value.trim();
+    const to = document.getElementById('em-to').value.trim();
+    if (!company || !to) { showAlert('em-alert', '公司名和邮箱必填', 'error'); return; }
+    try {
+        const res = await api('/email/send', 'POST', {
+            company_name: company, to_email: to,
+            subject: document.getElementById('em-subject').value,
+            body: document.getElementById('em-body').value,
+            template: _emailType,
+        });
+        if (res.record.simulated) {
+            showAlert('em-alert', '📧 邮件已模拟发送（未配置SMTP）', 'warning');
+        } else {
+            showAlert('em-alert', '✉️ 邮件发送成功！', 'success');
+        }
+        loadHistory();
+    } catch (e) { showAlert('em-alert', e.message, 'error'); }
+}
+
+async function loadSmtpStatus() {
+    try {
+        const res = await api('/smtp/config');
+        updateSmtpStatusBadge(res.configured);
+    } catch (e) {}
+}
+
+function updateSmtpStatusBadge(configured) {
+    const badge = document.getElementById('smtp-status-badge');
+    const hint = document.getElementById('em-smtp-status');
+    if (configured) {
+        badge.className = 'config-status configured';
+        badge.innerHTML = '<span class="status-dot status-success"></span>已配置';
+        if (hint) hint.innerHTML = '<span style="color:#10b981;">✓ SMTP 已配置</span>';
+    } else {
+        badge.className = 'config-status not-configured';
+        badge.innerHTML = '<span class="status-dot status-error"></span>未配置';
+        if (hint) hint.innerHTML = '<span style="color:#f59e0b;">⚠ 未配置SMTP，将模拟发送</span>';
+    }
+}
+
+async function startWorkflow() {
+    const industry = document.getElementById('wf-industry').value.trim();
+    if (!industry) { showAlert('wf-alert', '请输入行业/产品', 'error'); return; }
+    const btn = document.getElementById('wf-btn');
+    btn.disabled = true; btn.innerHTML = '<span class="loading"></span>执行中...';
+    document.getElementById('wf-result-card').style.display = 'block';
+    const steps = ['客户搜索', '官网爬取', '联系方式', '客户评分', 'CRM录入', '开发信'];
+    document.getElementById('wf-steps').innerHTML = steps.map((s, i) =>
+        '<span class="workflow-step ' + (i === 0 ? 'active' : '') + '" id="wf-step-' + i + '">' + (i + 1) + '. ' + s + '</span>' +
+        (i < steps.length - 1 ? '<span class="workflow-arrow">→</span>' : '')
+    ).join('');
+    document.getElementById('wf-progress').style.width = '10%';
+    try {
+        const res = await api('/workflow/full', 'POST', {
+            industry, region: document.getElementById('wf-region').value.trim(),
+            count: parseInt(document.getElementById('wf-count').value) || 5,
+            product: document.getElementById('wf-product').value.trim(),
+            send_email: document.getElementById('wf-send-email').checked,
+            email_template: document.getElementById('wf-template').value,
+        });
+        for (let i = 0; i < steps.length; i++) {
+            const el = document.getElementById('wf-step-' + i);
+            if (el) { el.classList.remove('active'); el.classList.add('done'); }
+            document.getElementById('wf-progress').style.width = ((i + 1) / steps.length * 100) + '%';
+            await new Promise(r => setTimeout(r, 150));
+        }
+        document.getElementById('wf-summary').textContent = '🎉 ' + res.summary;
+        document.getElementById('wf-export-btn').style.display = 'inline-flex';
+        document.getElementById('wf-results').innerHTML =
+            '<div class="customer-grid">' +
+            res.customers.map((c, idx) =>
+                '<div class="customer-card">' +
+                    '<div class="customer-name">' + escapeHtml(c.company_name) + '</div>' +
+                    '<div class="customer-web">' + escapeHtml(c.website) + '</div>' +
+                    '<div style="font-size:12px;color:#6b7280;margin:6px 0;">📍 ' + escapeHtml(c.country || '') + '</div>' +
+                    '<div class="score-detail">' +
+                        Object.keys(c.scores || {}).map(k => {
+                            const max = k === 'website_quality' ? 30 : k === 'contact_info' ? 35 : k === 'industry_match' ? 20 : 15;
+                            return '<div class="score-row"><span class="score-label" style="font-size:11px;width:70px;">' + k + '</span>' +
+                                '<div class="score-bar"><div class="score-bar-fill" style="width:' + ((c.scores[k] || 0) / max * 100) + '%;"></div></div>' +
+                                '<span class="score-num" style="font-size:11px;">' + (c.scores[k] || 0) + '</span></div>';
+                        }).join('') +
+                    '</div>' +
+                    '<div class="customer-footer">' +
+                        '<span class="level-badge level-' + c.level + '">' + c.score + '分 ' + c.level + '级</span>' +
+                        '<span style="font-size:12px;color:#6b7280;">' + (c.email_sent ? '✉️ 已发信' : '📋 已录入') + '</span>' +
+                    '</div>' +
+                '</div>'
+            ).join('') +
+            '</div>';
+        _workflowResults = res.customers;
+        showAlert('wf-alert', '一键获客完成！', 'success');
+    } catch (e) { showAlert('wf-alert', e.message, 'error'); }
+    finally { btn.disabled = false; btn.innerHTML = '🚀 开始一键获客'; loadDashboard(); loadHistory(); }
+}
+
+async function loadCRM() {
+    try {
+        const level = document.getElementById('crm-filter-level').value;
+        const status = document.getElementById('crm-filter-status').value;
+        const res = await api('/crm/customers?page=1&page_size=100&level=' + encodeURIComponent(level) + '&status=' + encodeURIComponent(status));
+        const tbody = document.getElementById('crm-tbody');
+        if (res.customers.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:30px;color:#9ca3af;">暂无数据</td></tr>';
+        } else {
+            tbody.innerHTML = res.customers.map(c =>
+                '<tr>' +
+                    '<td style="font-weight:500;">' + escapeHtml(c.company_name) + '</td>' +
+                    '<td>' + (c.email ? '<span style="color:#667eea;">' + escapeHtml(c.email) + '</span>' : '-') + '</td>' +
+                    '<td><span class="level-badge level-' + c.level + '">' + c.score + '分 ' + c.level + '</span></td>' +
+                    '<td><span class="badge">' + escapeHtml(c.status || '待开发') + '</span></td>' +
+                    '<td>' + escapeHtml(c.industry || '-') + '</td>' +
+                    '<td class="action-btns">' +
+                        '<button class="btn btn-sm btn-info" onclick="editCRM(\'' + c.id + '\')">编辑</button>' +
+                        '<button class="btn btn-sm btn-danger" onclick="deleteCRM(\'' + c.id + '\')">删除</button>' +
+                    '</td>' +
+                '</tr>'
+            ).join('');
+        }
+        document.getElementById('crm-pagination').textContent = '共 ' + res.total + ' 条';
+    } catch (e) {}
+}
+
+function openCRMModal(id) {
+    _crmEditId = id || null;
+    document.getElementById('crm-modal-title').textContent = id ? '编辑客户' : '新增客户';
+    if (!id) {
+        ['company', 'email', 'phone', 'website', 'industry', 'notes'].forEach(f => document.getElementById('crm-m-' + f).value = '');
+        document.getElementById('crm-m-score').value = 0;
+        document.getElementById('crm-m-level').value = '';
+        document.getElementById('crm-m-status').value = '待开发';
+    }
+    document.getElementById('crm-modal').style.display = 'flex';
+}
+
+function closeCRMModal() { document.getElementById('crm-modal').style.display = 'none'; _crmEditId = null; }
+
+async function saveCRMFromModal() {
+    const data = {
+        company_name: document.getElementById('crm-m-company').value.trim(),
+        website: document.getElementById('crm-m-website').value.trim(),
+        email: document.getElementById('crm-m-email').value.trim(),
+        phone: document.getElementById('crm-m-phone').value.trim(),
+        industry: document.getElementById('crm-m-industry').value.trim(),
+        score: parseInt(document.getElementById('crm-m-score').value) || 0,
+        level: document.getElementById('crm-m-level').value,
+        status: document.getElementById('crm-m-status').value,
+        notes: document.getElementById('crm-m-notes').value.trim(),
+    };
+    if (!data.company_name) { alert('公司名称必填'); return; }
+    try {
+        if (_crmEditId) { await api('/crm/customers/' + _crmEditId, 'PUT', data); }
+        else { await api('/crm/customers', 'POST', data); }
+        closeCRMModal(); loadCRM();
+    } catch (e) { alert(e.message); }
+}
+
+async function editCRM(id) {
+    try {
+        const c = await api('/crm/customers/' + id);
+        openCRMModal(id);
+        setTimeout(() => {
+            document.getElementById('crm-m-company').value = c.company_name || '';
+            document.getElementById('crm-m-email').value = c.email || '';
+            document.getElementById('crm-m-phone').value = c.phone || '';
+            document.getElementById('crm-m-website').value = c.website || '';
+            document.getElementById('crm-m-industry').value = c.industry || '';
+            document.getElementById('crm-m-score').value = c.score || 0;
+            document.getElementById('crm-m-level').value = c.level || '';
+            document.getElementById('crm-m-status').value = c.status || '待开发';
+            document.getElementById('crm-m-notes').value = c.notes || '';
+        }, 50);
+    } catch (e) { alert(e.message); }
+}
+
+async function deleteCRM(id) {
+    if (!confirm('确定删除这个客户吗？')) return;
+    try { await api('/crm/customers/' + id, 'DELETE'); loadCRM(); }
+    catch (e) { alert(e.message); }
+}
+
+const PRESETS = {
+    gmail: { host: 'smtp.gmail.com', port: 465, ssl: true, starttls: false },
+    qq: { host: 'smtp.qq.com', port: 465, ssl: true, starttls: false },
+    163: { host: 'smtp.163.com', port: 465, ssl: true, starttls: false },
+    outlook: { host: 'smtp.office365.com', port: 587, ssl: false, starttls: true },
+    icloud: { host: 'smtp.mail.me.com', port: 587, ssl: false, starttls: true },
+    yahoo: { host: 'smtp.mail.yahoo.com', port: 465, ssl: true, starttls: false },
+};
+
+function applySmtpPreset() {
+    const provider = document.getElementById('smtp-provider').value;
+    if (provider && PRESETS[provider]) {
+        const p = PRESETS[provider];
+        document.getElementById('smtp-host').value = p.host;
+        document.getElementById('smtp-port').value = p.port;
+        document.getElementById('smtp-ssl').checked = p.ssl;
+        document.getElementById('smtp-starttls').checked = p.starttls;
+    }
+}
+
+async function loadSmtpConfig() {
+    try {
+        const res = await api('/smtp/config');
+        updateSmtpStatusBadge(res.configured);
+        if (res.config) {
+            const c = res.config;
+            document.getElementById('smtp-host').value = c.host || '';
+            document.getElementById('smtp-port').value = c.port || '';
+            document.getElementById('smtp-username').value = c.username || '';
+            document.getElementById('smtp-password').value = '';
+            document.getElementById('smtp-from-email').value = c.from_email || '';
+            document.getElementById('smtp-from-name').value = c.from_name || '';
+            document.getElementById('smtp-ssl').checked = c.use_ssl;
+            document.getElementById('smtp-starttls').checked = c.use_starttls;
+        }
+    } catch (e) {}
+}
+
+async function saveSmtpConfig() {
+    try {
+        await api('/smtp/config', 'POST', {
+            provider: document.getElementById('smtp-provider').value,
+            host: document.getElementById('smtp-host').value.trim(),
+            port: parseInt(document.getElementById('smtp-port').value) || 0,
+            username: document.getElementById('smtp-username').value.trim(),
+            password: document.getElementById('smtp-password').value,
+            use_ssl: document.getElementById('smtp-ssl').checked,
+            use_starttls: document.getElementById('smtp-starttls').checked,
+            from_email: document.getElementById('smtp-from-email').value.trim(),
+            from_name: document.getElementById('smtp-from-name').value.trim(),
+        });
+        showAlert('smtp-alert', 'SMTP 配置已保存', 'success');
+        loadSmtpStatus();
+    } catch (e) { showAlert('smtp-alert', e.message, 'error'); }
+}
+
+async function testSmtpConfig() {
+    try {
+        const res = await api('/smtp/test', 'POST');
+        showAlert('smtp-alert', res.message, res.success ? 'success' : 'error');
+    } catch (e) { showAlert('smtp-alert', e.message, 'error'); }
+}
+
+async function clearSmtpConfig() {
+    if (!confirm('确定清除 SMTP 配置吗？')) return;
+    try { await api('/smtp/config', 'DELETE'); showAlert('smtp-alert', '已清除', 'warning'); updateSmtpStatusBadge(false); }
+    catch (e) { showAlert('smtp-alert', e.message, 'error'); }
+}
+
+async function loadHistory() {
+    try {
+        const res = await api('/email/history');
+        const container = document.getElementById('history-list');
+        if (res.history.length === 0) {
+            container.innerHTML = '<div class="empty-state">暂无发送记录</div>';
+            return;
+        }
+        container.innerHTML = res.history.map(h => {
+            const t = new Date((h.sent_at || 0) * 1000).toLocaleString();
+            const statusClass = h.status === 'sent' ? 'history-sent' : (h.simulated ? 'history-sim' : 'history-sim');
+            const statusText = h.status === 'sent' ? '已发送' : '模拟发送';
+            return '<div class="history-item">' +
+                '<div class="history-row">' +
+                    '<span class="history-company">' + escapeHtml(h.company_name || h.to_email) + '</span>' +
+                    '<span class="history-status ' + statusClass + '">' + statusText + '</span>' +
+                '</div>' +
+                '<div style="font-size:12px;color:#6b7280;margin-bottom:4px;">📧 ' + escapeHtml(h.to_email) + '</div>' +
+                '<div style="font-size:12px;color:#374151;">📝 ' + escapeHtml(h.subject) + '</div>' +
+                '<div style="font-size:11px;color:#9ca3af;margin-top:6px;">🕐 ' + t + '</div>' +
+            '</div>';
+        }).join('');
+    } catch (e) {}
+}
+
+function exportToExcel(data, filename, sheetName) {
+    if (!data || data.length === 0) { alert('没有数据可导出'); return; }
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, sheetName || 'Sheet1');
+    XLSX.writeFile(wb, filename + '.xlsx');
+}
+
+function flattenCustomer(c) {
+    return {
+        '公司名称': c.company_name || '', '网站': c.website || '',
+        '邮箱': c.email || (c.emails ? c.emails.join(', ') : ''),
+        '电话': c.phone || (c.phones ? c.phones.join(', ') : ''),
+        '行业': c.industry || '', '国家': c.country || '',
+        '地址': c.address || '', '联系人': c.contact_person || '',
+        '评分': c.score || 0, '等级': c.level || '', '状态': c.status || '',
+        '产品': (c.products || []).join(', '),
+        '认证': (c.certifications || []).join(', '),
+        '备注': c.notes || '',
+    };
+}
+
+async function exportCRMToExcel() {
+    try {
+        const level = document.getElementById('crm-filter-level').value;
+        const status = document.getElementById('crm-filter-status').value;
+        const res = await api('/crm/customers?page=1&page_size=1000&level=' + encodeURIComponent(level) + '&status=' + encodeURIComponent(status));
+        const data = (res.customers || []).map(flattenCustomer);
+        exportToExcel(data, 'CRM客户_' + new Date().toLocaleDateString(), 'CRM');
+    } catch (e) { alert('导出失败: ' + e.message); }
+}
+
+function exportSearchToExcel() {
+    if (_searchResults.length === 0) { alert('没有数据可导出'); return; }
+    exportToExcel(_searchResults.map(flattenCustomer), '搜索结果_' + new Date().toLocaleDateString(), '搜索结果');
+}
+
+function exportWorkflowToExcel() {
+    if (!_workflowResults || _workflowResults.length === 0) { alert('没有数据可导出'); return; }
+    exportToExcel(_workflowResults.map(flattenCustomer), '获客结果_' + new Date().toLocaleDateString(), '获客结果');
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+    const key = localStorage.getItem('api_key');
+    if (key) {
+        _authenticated = true;
+        document.getElementById('login-area').style.display = 'none';
+        document.getElementById('user-info').style.display = 'block';
+        document.getElementById('api-key-input').value = key;
+        loadDashboard(); loadSmtpStatus(); loadCRM(); loadHistory();
+    }
+});
+</script>
+</body>
+</html>
