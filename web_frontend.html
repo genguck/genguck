@@ -751,12 +751,36 @@ async function scoreCustomer() {
 
 function selectEmailType(type) {
     _emailType = type;
-    document.querySelectorAll('.template-btn').forEach(b => b.classList.toggle('active', b.dataset.type === type));
+    document.querySelectorAll('.template-btn').forEach(b => {
+        b.classList.remove('active');
+        if (b.dataset.type === type) {
+            b.classList.add('active');
+            b.style.outline = '3px solid #667eea';
+            b.style.outlineOffset = '2px';
+            b.style.transform = 'translateY(-2px)';
+        } else {
+            b.style.outline = '';
+            b.style.outlineOffset = '';
+            b.style.transform = '';
+        }
+    });
 }
 
 async function generateEmail() {
+    const key = localStorage.getItem('api_key');
+    if (!key) {
+        alert('请先在顶部输入 API Key 登录！');
+        document.getElementById('api-key-input').focus();
+        return;
+    }
     const company = document.getElementById('em-company').value.trim();
-    if (!company) { alert('请输入公司名称'); return; }
+    if (!company) {
+        showAlert('em-alert', '请输入公司名称', 'error');
+        document.getElementById('em-company').focus();
+        return;
+    }
+    const btn = document.querySelector('button.btn-warning');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<span class="loading"></span>AI生成中...'; }
     try {
         const res = await api('/email/generate', 'POST', {
             company_name: company,
@@ -768,15 +792,29 @@ async function generateEmail() {
         if (res.email) {
             document.getElementById('em-subject').value = res.email.subject;
             document.getElementById('em-body').value = res.email.body;
-            showAlert('em-alert', '邮件已生成', 'success');
+            const typeNames = {
+                'standard': '标准开发信', 'personalized': '个性化', 'follow_up': '跟进邮件', 'cold': '冷邮件',
+                'ai': 'AI合作型', 'ai_supplier': 'AI供应商型', 'ai_inquiry': 'AI询价型', 'ai_product': 'AI产品推介',
+                'ai_invitation': 'AI展会邀请', 'ai_sample': 'AI样品申请', 'ai_agency': 'AI代理招募', 'ai_followup': 'AI跟进型'
+            };
+            showAlert('em-alert', '✅ ' + (typeNames[_emailType] || 'AI') + ' 已生成，可编辑后发送', 'success');
         }
-    } catch (e) { showAlert('em-alert', e.message, 'error'); }
+    } catch (e) {
+        showAlert('em-alert', '❌ 生成失败: ' + e.message, 'error');
+        console.error('生成邮件错误:', e);
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = '生成邮件'; }
+    }
 }
 
 async function sendEmail() {
+    const key = localStorage.getItem('api_key');
+    if (!key) { alert('请先登录！'); return; }
     const company = document.getElementById('em-company').value.trim();
     const to = document.getElementById('em-to').value.trim();
     if (!company || !to) { showAlert('em-alert', '公司名和邮箱必填', 'error'); return; }
+    const btn = document.querySelector('button.btn-success');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<span class="loading"></span>发送中...'; }
     try {
         const res = await api('/email/send', 'POST', {
             company_name: company, to_email: to,
@@ -785,12 +823,16 @@ async function sendEmail() {
             template: _emailType,
         });
         if (res.record.simulated) {
-            showAlert('em-alert', '📧 邮件已模拟发送（未配置SMTP）', 'warning');
+            showAlert('em-alert', '📧 邮件已模拟发送（未配置SMTP，请到SMTP页面配置）', 'warning');
         } else {
             showAlert('em-alert', '✉️ 邮件发送成功！', 'success');
         }
         loadHistory();
-    } catch (e) { showAlert('em-alert', e.message, 'error'); }
+    } catch (e) {
+        showAlert('em-alert', '❌ 发送失败: ' + e.message, 'error');
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = '📨 发送邮件'; }
+    }
 }
 
 async function loadSmtpStatus() {
