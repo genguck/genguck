@@ -489,10 +489,95 @@ Reply "yes" and I'll send details.
 
 Best,
 [Your Name]"""
+        },
+        "ai": {
+            "subject": _ai_generate_subject(req.company_name, req.industry, req.product),
+            "body": _ai_generate_body(req.company_name, req.contact, req.industry, req.product)
         }
     }
     tpl = templates.get(req.email_type, templates["standard"])
     return {"email": tpl, "type": req.email_type}
+
+def _ai_generate_subject(company_name: str, industry: str, product: str) -> str:
+    """AI智能生成邮件主题"""
+    if not company_name:
+        return "合作咨询"
+    if industry and product:
+        return f"{product}解决方案 | {company_name}的专业合作伙伴"
+    if industry:
+        return f"{industry}领域创新方案 | 致{company_name}"
+    if product:
+        return f"{product}供应合作机会"
+    return f"关于{company_name}的合作机会"
+
+def _ai_generate_body(company_name: str, contact: str, industry: str, product: str) -> str:
+    """AI智能生成邮件正文"""
+    greeting = f"Dear {contact}" if contact else "Dear Decision Maker"
+    
+    opening_lines = [
+        f"I hope this email finds you well at {company_name}.",
+        f"Greetings from your industry partner!",
+        f"Hope you're having a productive day at {company_name}.",
+    ]
+    opening = random.choice(opening_lines)
+    
+    industry_prompts = {
+        "electronics": "We specialize in high-quality electronic components and semiconductor solutions.",
+        "furniture": "We design and manufacture premium furniture for commercial and residential use.",
+        "textile": "We offer innovative textile solutions for fashion and industrial applications.",
+        "machinery": "We provide advanced machinery and equipment solutions.",
+        "automotive": "We supply automotive components and aftermarket solutions.",
+    }
+    industry_text = industry_prompts.get(industry.lower(), "We offer comprehensive solutions for your business needs.")
+    
+    product_lines = []
+    if product:
+        product_lines = [
+            f"✓ {product} - Industry-leading performance",
+            f"✓ Customized {product} solutions",
+            f"✓ Competitive pricing on {product}",
+        ]
+    
+    benefits = [
+        "✓ Cost reduction potential of 15-30%",
+        "✓ Supply chain optimization",
+        "✓ Fast response and delivery",
+        "✓ ISO 9001 certified quality",
+        "✓ 24/7 technical support",
+    ]
+    
+    call_to_action = [
+        "Would you be available for a 15-minute call next week?",
+        "Could we schedule a brief introduction call?",
+        "Let me know if you'd like to discuss further.",
+        "I'd welcome the opportunity to connect with you.",
+    ]
+    
+    body = f"""{greeting},
+
+{opening}
+
+{industry_text}
+
+Based on our research of {company_name}, we believe our solutions could significantly benefit your operations.
+
+"""
+    
+    if product_lines:
+        body += "Product Highlights:\n" + "\n".join(product_lines) + "\n\n"
+    
+    body += "Key Benefits:\n" + "\n".join(random.sample(benefits, 3)) + "\n\n"
+    
+    body += f"""{random.choice(call_to_action)}
+
+Please let me know your availability or any questions you may have.
+
+Best regards,
+[Your Name]
+[Your Company]
+[Contact Information]"""
+    
+    return body
 
 @app.post("/api/email/send")
 async def send_email(req: EmailSendRequest, user: str = Depends(get_current_user)):
