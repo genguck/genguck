@@ -7,7 +7,7 @@ from scheduler.main import TaskScheduler
 from utils.logger import logger
 
 def main():
-    parser = argparse.ArgumentParser(description="外贸获客Agent - 全自动外贸客户开发系统")
+    parser = argparse.ArgumentParser(description="Agent外贸获客 rendae - 全自动外贸客户开发系统")
     parser.add_argument("--mode", choices=["skill", "scheduler"], default="skill", help="运行模式")
     parser.add_argument("--instruction", type=str, help="自然语言指令")
     parser.add_argument("--task-id", type=str, help="任务ID")

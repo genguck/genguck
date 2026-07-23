@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-外贸获客 Agent - 简单Web界面启动器
+Agent外贸获客 rendae - 简单Web界面启动器
 集成 Skill 执行 + 简单Web UI
 """
 import asyncio
@@ -24,7 +24,7 @@ HTML_CONTENT = '''<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<title>外贸获客 Agent</title>
+<title>Agent外贸获客 rendae</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: -apple-system, sans-serif; background: #f0f2f5; color: #1f2937; }
@@ -49,7 +49,7 @@ body { font-family: -apple-system, sans-serif; background: #f0f2f5; color: #1f29
 </head>
 <body>
 <div class="header">
-    <h1>🎯 外贸获客 Agent</h1>
+    <h1>🎯 Agent外贸获客 rendae</h1>
     <p style="font-size: 12px; opacity: 0.9; margin-top: 4px;">全自动外贸客户开发系统</p>
 </div>
 <div class="container">

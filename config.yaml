@@ -1,7 +1,7 @@
 app:
-  name: "外贸获客Agent"
+  name: "Agent外贸获客 rendae"
   version: "1.0.0"
-  description: "全自动外贸获客Agent - 从自然语言指令到客户触达的自动化闭环"
+  description: "全自动Agent外贸获客 rendae - 从自然语言指令到客户触达的自动化闭环"
 
 server:
   host: "0.0.0.0"

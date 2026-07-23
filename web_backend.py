@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-外贸获客 Agent - FastAPI 后端服务
+Agent外贸获客 rendae - FastAPI 后端服务
 基于第一性原理设计：API Key 认证 + 速率限制 + SSRF/XSS 防护 + 真实数据爬取
 """
 import asyncio
@@ -260,7 +260,7 @@ def _evaluate_company(company: Dict, industry: str = "") -> Dict:
     return {"total_score": score, "level": level, "scores": detail}
 
 # ==================== FastAPI 应用 ====================
-app = FastAPI(title="外贸获客 Agent", version="1.0.0")
+app = FastAPI(title="Agent外贸获客 rendae", version="1.0.0")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
