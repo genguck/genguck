@@ -1201,6 +1201,16 @@ async def dashboard_stats(user: str = Depends(get_current_user)):
     avg_score = sum(c.get("score", 0) for c in customers) / total
     converted = sum(1 for c in customers if c.get("status") == "已成交")
     conversion_rate = (converted / total) * 100
+    # 状态分布
+    status_dist = {}
+    for c in customers:
+        st = c.get("status", "待开发")
+        status_dist[st] = status_dist.get(st, 0) + 1
+    # 行业分布
+    industry_dist = {}
+    for c in customers:
+        ind = c.get("industry", "未分类")
+        industry_dist[ind] = industry_dist.get(ind, 0) + 1
     # 记录今日快照
     snapshot = _record_dashboard_snapshot()
     # 获取历史趋势
@@ -1210,7 +1220,32 @@ async def dashboard_stats(user: str = Depends(get_current_user)):
         "customers": h["total_customers"],
         "emails": h["total_emails_sent"],
         "avg_score": h["avg_score"],
+        "a_level": h.get("a_level", 0),
+        "conversion_rate": h.get("conversion_rate", 0),
     } for h in hist[-30:]]
+    # 最近客户（按创建时间倒序，最多 8 条，可点击查看详情）
+    sorted_customers = sorted(customers, key=lambda c: c.get("created_at", 0), reverse=True)
+    recent_customers = [{
+        "id": c.get("id", ""),
+        "name": c.get("company_name", ""),
+        "website": c.get("website", ""),
+        "industry": c.get("industry", ""),
+        "score": c.get("score", 0),
+        "level": c.get("level", "D"),
+        "status": c.get("status", "待开发"),
+        "email": c.get("email", ""),
+        "phone": c.get("phone", ""),
+        "created_at": c.get("created_at", 0),
+    } for c in sorted_customers[:8]]
+    # 最近邮件（按发送时间倒序，最多 8 条）
+    sorted_emails = sorted(email_history, key=lambda e: e.get("sent_at", 0), reverse=True)
+    recent_emails = [{
+        "company": e.get("company_name", ""),
+        "to_email": e.get("to_email", ""),
+        "subject": e.get("subject", ""),
+        "status": e.get("status", ""),
+        "time": e.get("sent_at", 0),
+    } for e in sorted_emails[:8]]
     return {
         "stats": {
             "total_customers": len(customers),
@@ -1220,7 +1255,11 @@ async def dashboard_stats(user: str = Depends(get_current_user)):
             "avg_score": round(avg_score, 1),
         },
         "level_distribution": levels,
+        "status_distribution": status_dist,
+        "industry_distribution": industry_dist,
         "trend": trend,
+        "recent_customers": recent_customers,
+        "recent_emails": recent_emails,
     }
 
 if __name__ == "__main__":

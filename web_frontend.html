@@ -143,6 +143,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC'
     </div>
 
     <div class="tab-content active" id="tab-dashboard">
+        <div id="dashboard-alert"></div>
         <div class="stats-grid">
             <div class="stat-card"><div class="stat-num" id="stat-customers">-</div><div class="stat-label">总客户数</div></div>
             <div class="stat-card"><div class="stat-num" id="stat-emails">-</div><div class="stat-label">发送邮件</div></div>
@@ -156,6 +157,16 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC'
                 <div id="level-dist"><div style="color:#9ca3af;font-size:13px;">暂无数据</div></div>
             </div>
             <div class="card">
+                <div class="card-title">📌 客户状态分布</div>
+                <div id="status-dist"><div style="color:#9ca3af;font-size:13px;">暂无数据</div></div>
+            </div>
+        </div>
+        <div class="two-col">
+            <div class="card">
+                <div class="card-title">🏭 行业分布</div>
+                <div id="industry-dist"><div style="color:#9ca3af;font-size:13px;">暂无数据</div></div>
+            </div>
+            <div class="card">
                 <div class="card-title">📈 系统信息</div>
                 <div style="font-size:13px;color:#6b7280;line-height:2;">
                     ✅ API 服务: 正常运行<br>
@@ -164,6 +175,14 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC'
                     ✅ 数据存储: JSON本地存储
                 </div>
             </div>
+        </div>
+        <div class="card">
+            <div class="card-title">📋 最近客户（点击查看详情）</div>
+            <div id="recent-customers"><div style="color:#9ca3af;font-size:13px;">暂无数据</div></div>
+        </div>
+        <div class="card">
+            <div class="card-title">✉️ 最近邮件</div>
+            <div id="recent-emails"><div style="color:#9ca3af;font-size:13px;">暂无数据</div></div>
         </div>
         <div class="card">
             <div class="card-title">📊 历史趋势</div>
@@ -565,31 +584,99 @@ function switchTab(tab) {
 async function loadDashboard() {
     try {
         const res = await api('/dashboard/stats');
-        const s = res.stats;
+        const s = res.stats || {};
         document.getElementById('stat-customers').textContent = s.total_customers || 0;
         document.getElementById('stat-emails').textContent = s.total_emails_sent || 0;
         document.getElementById('stat-a').textContent = s.a_level_customers || 0;
         document.getElementById('stat-rate').textContent = (s.conversion_rate || 0) + '%';
         document.getElementById('stat-score').textContent = s.avg_score || 0;
-        const total = s.total_customers || 1;
-        const dist = res.level_distribution || {};
-        const items = [
-            { label: 'A级', count: dist.A || 0, color: '#10b981' },
-            { label: 'B级', count: dist.B || 0, color: '#3b82f6' },
-            { label: 'C级', count: dist.C || 0, color: '#f59e0b' },
-            { label: 'D级', count: dist.D || 0, color: '#9ca3af' },
-        ];
-        document.getElementById('level-dist').innerHTML = items.map(item => {
-            const pct = total > 0 ? Math.round(item.count / total * 100) : 0;
-            return '<div style="margin-bottom:12px;">' +
-                '<div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;">' +
-                    '<span style="font-weight:500;">' + item.label + '客户</span>' +
-                    '<span style="color:#6b7280;">' + item.count + ' (' + pct + '%)</span>' +
-                '</div>' +
-                '<div style="height:10px;background:#f3f4f6;border-radius:5px;overflow:hidden;">' +
-                    '<div style="height:100%;width:' + pct + '%;background:' + item.color + ';border-radius:5px;"></div>' +
-                '</div></div>';
-        }).join('');
+
+        // 通用分布渲染（带进度条）
+        function renderDist(containerId, dist, defaultOrder) {
+            const el = document.getElementById(containerId);
+            if (!el) return;
+            const keys = defaultOrder ? defaultOrder.filter(k => dist[k] !== undefined) : Object.keys(dist);
+            // 合并未在 defaultOrder 中的键
+            Object.keys(dist).forEach(k => { if (!keys.includes(k)) keys.push(k); });
+            const total = keys.reduce((sum, k) => sum + (dist[k] || 0), 0) || 1;
+            if (keys.length === 0 || total === 0) {
+                el.innerHTML = '<div style="color:#9ca3af;font-size:13px;">暂无数据</div>';
+                return;
+            }
+            el.innerHTML = keys.map(k => {
+                const count = dist[k] || 0;
+                const pct = Math.round(count / total * 100);
+                const color = ({
+                    'A': '#10b981', 'B': '#3b82f6', 'C': '#f59e0b', 'D': '#9ca3af',
+                    '已成交': '#10b981', '联系中': '#3b82f6', '待开发': '#f59e0b', '已流失': '#ef4444',
+                })[k] || '#667eea';
+                return '<div style="margin-bottom:12px;">' +
+                    '<div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;">' +
+                        '<span style="font-weight:500;">' + escapeHtml(k) + '</span>' +
+                        '<span style="color:#6b7280;">' + count + ' (' + pct + '%)</span>' +
+                    '</div>' +
+                    '<div style="height:10px;background:#f3f4f6;border-radius:5px;overflow:hidden;">' +
+                        '<div style="height:100%;width:' + pct + '%;background:' + color + ';border-radius:5px;transition:width 0.3s;"></div>' +
+                    '</div></div>';
+            }).join('');
+        }
+
+        renderDist('level-dist', res.level_distribution || {}, ['A', 'B', 'C', 'D']);
+        renderDist('status-dist', res.status_distribution || {});
+        renderDist('industry-dist', res.industry_distribution || {});
+
+        // 最近客户（可点击查看详情）
+        const recentCust = res.recent_customers || [];
+        const rcEl = document.getElementById('recent-customers');
+        if (rcEl) {
+            if (recentCust.length === 0) {
+                rcEl.innerHTML = '<div style="color:#9ca3af;font-size:13px;">暂无客户</div>';
+            } else {
+                rcEl.className = 'customer-grid';
+                rcEl.innerHTML = recentCust.map(c => {
+                    const hasId = c.id && c.id !== '';
+                    const click = hasId ? 'onclick="openCRMModal(\'' + escapeHtml(c.id) + '\');editCRMFields(\'' + escapeHtml(c.id) + '\')"' : '';
+                    return '<div class="customer-card" style="cursor:' + (hasId ? 'pointer' : 'default') + ';" ' + click + '>' +
+                        '<div class="customer-name">' + escapeHtml(c.name) + '</div>' +
+                        (c.website ? '<a class="customer-web" href="' + escapeHtml(c.website) + '" target="_blank">' + escapeHtml(c.website) + '</a>' : '') +
+                        '<div class="customer-info">' +
+                            (c.industry ? '🏭 行业: ' + escapeHtml(c.industry) + '<br>' : '') +
+                            '⭐ 评分: ' + escapeHtml(String(c.score)) + '<br>' +
+                            '📊 等级: <span class="level-badge level-' + escapeHtml(c.level) + '">' + escapeHtml(c.level) + '</span><br>' +
+                            '📌 状态: ' + escapeHtml(c.status) +
+                            (c.email ? '<br>📧 ' + escapeHtml(c.email) : '') +
+                        '</div>' +
+                        (hasId ? '<div class="customer-footer"><span style="font-size:11px;color:#9ca3af;">点击查看详情</span></div>' : '') +
+                    '</div>';
+                }).join('');
+            }
+        }
+
+        // 最近邮件
+        const recentEmails = res.recent_emails || [];
+        const reEl = document.getElementById('recent-emails');
+        if (reEl) {
+            if (recentEmails.length === 0) {
+                reEl.innerHTML = '<div style="color:#9ca3af;font-size:13px;">暂无邮件</div>';
+            } else {
+                reEl.innerHTML = recentEmails.map(e => {
+                    const stColor = e.status === 'sent' ? '#10b981' : e.status === 'failed' ? '#ef4444' : '#f59e0b';
+                    const stText = e.status === 'sent' ? '已发送' : e.status === 'failed' ? '失败' : (e.status || '模拟');
+                    const timeStr = e.time ? new Date(e.time * 1000).toLocaleString('zh-CN') : '';
+                    return '<div class="history-item">' +
+                        '<div class="history-row">' +
+                            '<span class="history-company">' + escapeHtml(e.company || '(无公司)') + '</span>' +
+                            '<span class="history-status history-' + (e.status === 'sent' ? 'sent' : 'sim') + '">' + stText + '</span>' +
+                        '</div>' +
+                        '<div style="font-size:12px;color:#6b7280;margin-bottom:4px;">📧 ' + escapeHtml(e.to_email || '') + '</div>' +
+                        '<div style="font-size:13px;color:#374151;">主题: ' + escapeHtml(e.subject || '(无主题)') + '</div>' +
+                        (timeStr ? '<div style="font-size:11px;color:#9ca3af;margin-top:4px;">⏰ ' + timeStr + '</div>' : '') +
+                    '</div>';
+                }).join('');
+            }
+        }
+
+        // 历史趋势
         const trend = res.trend || [];
         if (trend.length > 0) {
             const maxC = Math.max(...trend.map(t => t.customers), 1);
@@ -619,8 +706,32 @@ async function loadDashboard() {
                 + '<span style="display:inline-block;width:12px;height:12px;background:#10b981;border-radius:3px;vertical-align:middle;margin-right:4px;"></span>邮件数 &nbsp;'
                 + '<span style="display:inline-block;width:12px;height:12px;background:#f59e0b;border-radius:50%;vertical-align:middle;margin-right:4px;"></span>平均评分</div>';
             document.getElementById('trend-chart').innerHTML = svg;
+        } else {
+            document.getElementById('trend-chart').innerHTML = '<div style="color:#9ca3af;font-size:13px;">暂无历史数据</div>';
         }
-    } catch (e) {}
+        showAlert('dashboard-alert', '✅ 看板数据已加载（共 ' + (s.total_customers || 0) + ' 个客户）', 'success');
+    } catch (e) {
+        showAlert('dashboard-alert', '看板加载失败: ' + e.message, 'error');
+    }
+}
+
+// 看板点击客户后填充编辑弹窗字段
+async function editCRMFields(id) {
+    if (!id) return;
+    try {
+        const c = await api('/crm/customers/' + id);
+        setTimeout(() => {
+            document.getElementById('crm-m-company').value = c.company_name || '';
+            document.getElementById('crm-m-email').value = c.email || '';
+            document.getElementById('crm-m-phone').value = c.phone || '';
+            document.getElementById('crm-m-website').value = c.website || '';
+            document.getElementById('crm-m-industry').value = c.industry || '';
+            document.getElementById('crm-m-score').value = c.score || 0;
+            document.getElementById('crm-m-level').value = c.level || '';
+            document.getElementById('crm-m-status').value = c.status || '待开发';
+            document.getElementById('crm-m-notes').value = c.notes || '';
+        }, 50);
+    } catch (e) { /* openCRMModal 已打开，保持空白 */ }
 }
 
 async function searchCustomers() {
