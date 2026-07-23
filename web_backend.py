@@ -41,6 +41,7 @@ DATA_DIR.mkdir(exist_ok=True)
 CRM_DB = DATA_DIR / "crm_customers.json"
 EMAIL_HISTORY = DATA_DIR / "email_history.json"
 SMTP_CONFIG = DATA_DIR / "smtp_config.json"
+DASHBOARD_HISTORY = DATA_DIR / "dashboard_history.json"
 
 API_KEY = os.getenv("WAIMAO_API_KEY") or secrets.token_urlsafe(24)
 HOST = os.getenv("WAIMAO_HOST", "0.0.0.0")
@@ -1145,23 +1146,81 @@ async def workflow_full(req: WorkflowRequest, user: str = Depends(get_current_us
         "customers": results,
     }
 
-@app.get("/api/dashboard/stats")
-async def dashboard_stats(user: str = Depends(get_current_user)):
+def _get_dashboard_history() -> List[Dict]:
+    return _load_json(DASHBOARD_HISTORY, [])
+
+def _save_dashboard_history(data: List[Dict]) -> None:
+    _save_json(DASHBOARD_HISTORY, data)
+
+def _record_dashboard_snapshot() -> Dict:
+    """记录当前数据快照到历史，返回快照"""
     customers = _get_customers()
     history = _get_email_history()
     sent = sum(1 for h in history if h.get("status") == "sent")
-    a_count = sum(1 for c in customers if c.get("level") == "A")
-    avg_score = sum(c.get("score", 0) for c in customers) / max(len(customers), 1)
+    levels = {"A": 0, "B": 0, "C": 0, "D": 0}
+    for c in customers:
+        lv = c.get("level", "D")
+        if lv in levels:
+            levels[lv] += 1
+    total = max(len(customers), 1)
+    avg_score = sum(c.get("score", 0) for c in customers) / total
     converted = sum(1 for c in customers if c.get("status") == "已成交")
-    conversion_rate = (converted / max(len(customers), 1)) * 100
+    snapshot = {
+        "timestamp": int(time.time()),
+        "total_customers": len(customers),
+        "total_emails_sent": sent,
+        "a_level": levels["A"],
+        "b_level": levels["B"],
+        "c_level": levels["C"],
+        "d_level": levels["D"],
+        "conversion_rate": round((converted / total) * 100, 1),
+        "avg_score": round(avg_score, 1),
+    }
+    # 保存到历史（最多保留 90 天记录，每天最多 1 条）
+    hist = _get_dashboard_history()
+    today = time.strftime("%Y-%m-%d")
+    hist = [h for h in hist if time.strftime("%Y-%m-%d", time.localtime(h["timestamp"])) != today]
+    hist.append(snapshot)
+    cutoff = time.time() - 90 * 86400
+    hist = [h for h in hist if h["timestamp"] >= cutoff]
+    _save_dashboard_history(hist)
+    return snapshot
+
+@app.get("/api/dashboard/stats")
+async def dashboard_stats(user: str = Depends(get_current_user)):
+    customers = _get_customers()
+    email_history = _get_email_history()
+    # 真实统计
+    levels = {"A": 0, "B": 0, "C": 0, "D": 0}
+    for c in customers:
+        lv = c.get("level", "D")
+        if lv in levels:
+            levels[lv] += 1
+    total = max(len(customers), 1)
+    sent = sum(1 for h in email_history if h.get("status") == "sent")
+    avg_score = sum(c.get("score", 0) for c in customers) / total
+    converted = sum(1 for c in customers if c.get("status") == "已成交")
+    conversion_rate = (converted / total) * 100
+    # 记录今日快照
+    snapshot = _record_dashboard_snapshot()
+    # 获取历史趋势
+    hist = _get_dashboard_history()
+    trend = [{
+        "date": time.strftime("%m-%d", time.localtime(h["timestamp"])),
+        "customers": h["total_customers"],
+        "emails": h["total_emails_sent"],
+        "avg_score": h["avg_score"],
+    } for h in hist[-30:]]
     return {
         "stats": {
             "total_customers": len(customers),
             "total_emails_sent": sent,
-            "a_level_customers": a_count,
+            "a_level_customers": levels["A"],
             "conversion_rate": round(conversion_rate, 1),
             "avg_score": round(avg_score, 1),
-        }
+        },
+        "level_distribution": levels,
+        "trend": trend,
     }
 
 if __name__ == "__main__":
