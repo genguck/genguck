@@ -1,0 +1,32 @@
+[
+  {
+    "id": "d2ee4c13-3c83-43ba-8fe1-0a8a04e19bf5",
+    "company_name": "Test",
+    "to_email": "test@example.com",
+    "subject": "Test",
+    "body": "Test",
+    "sent_at": 1784803023,
+    "status": "sent",
+    "simulated": true
+  },
+  {
+    "id": "414e974d-94ec-46b4-a38a-d50740c541b5",
+    "company_name": "Test",
+    "to_email": "test@example.com",
+    "subject": "Test",
+    "body": "Test",
+    "sent_at": 1784802598,
+    "status": "sent",
+    "simulated": true
+  },
+  {
+    "id": "51b6f749-0070-4735-98ed-1635b8b71c48",
+    "company_name": "alert(1)",
+    "to_email": "test@test.com",
+    "subject": "",
+    "body": "",
+    "sent_at": 1784802507,
+    "status": "sent",
+    "simulated": true
+  }
+]

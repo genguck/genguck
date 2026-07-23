@@ -331,8 +331,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC'
                 <textarea id="em-body" rows="10" placeholder="留空自动生成"></textarea>
             </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-                <button class="btn btn-warning" onclick="generateEmail()">生成邮件</button>
-                <button class="btn btn-success" onclick="sendEmail()">📨 发送邮件</button>
+                <button class="btn btn-warning" id="em-gen-btn" onclick="generateEmail()">生成邮件</button>
+                <button class="btn btn-success" id="em-send-btn" onclick="sendEmail()">📨 发送邮件</button>
                 <button class="btn" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;" onclick="autoGenerateAll()">⚡ 一键AI生成</button>
                 <span id="em-smtp-status" style="margin-left:8px;font-size:12px;color:#6b7280;"></span>
             </div>
@@ -818,7 +818,7 @@ async function generateEmail() {
         document.getElementById('em-company').focus();
         return;
     }
-    const btn = document.querySelector('button.btn-warning');
+    const btn = document.getElementById('em-gen-btn');
     if (btn) { btn.disabled = true; btn.innerHTML = '<span class="loading"></span>AI生成中...'; }
     try {
         const res = await api('/email/generate', 'POST', {
@@ -852,7 +852,7 @@ async function sendEmail() {
     const company = document.getElementById('em-company').value.trim();
     const to = document.getElementById('em-to').value.trim();
     if (!company || !to) { showAlert('em-alert', '公司名和邮箱必填', 'error'); return; }
-    const btn = document.querySelector('button.btn-success');
+    const btn = document.getElementById('em-send-btn');
     if (btn) { btn.disabled = true; btn.innerHTML = '<span class="loading"></span>发送中...'; }
     try {
         const res = await api('/email/send', 'POST', {

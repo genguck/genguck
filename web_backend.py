@@ -425,6 +425,8 @@ async def crawl_website(req: CrawlRequest, user: str = Depends(get_current_user)
 
 @app.post("/api/crawl/extract-contacts")
 async def extract_contacts(req: CrawlRequest, user: str = Depends(get_current_user)):
+    if not _is_safe_url(req.url):
+        raise HTTPException(status_code=400, detail="URL不安全（SSRF防护）")
     info = _crawl_company_info(req.url)
     return {"url": req.url, **info}
 
@@ -1037,7 +1039,9 @@ async def smtp_get_config(user: str = Depends(get_current_user)):
 @app.post("/api/smtp/config")
 async def smtp_save_config(req: SMTPConfigRequest, user: str = Depends(get_current_user)):
     cfg = req.dict()
-    cfg = {k: v for k, v in cfg.items() if v}
+    existing = _get_smtp_config()
+    if not cfg.get("password") and existing.get("password"):
+        cfg["password"] = existing["password"]
     _save_smtp_config(cfg)
     return {"success": True, "message": "SMTP配置已保存"}
 
@@ -1091,6 +1095,7 @@ async def workflow_full(req: WorkflowRequest, user: str = Depends(get_current_us
         c["level"] = score_result["level"]
         c["scores"] = score_result["scores"]
         c["snippet"] = f"{c.get('industry', '')} {c.get('country', '')}"
+        c["company_name"] = c.get("name", "")
         # 写入CRM
         try:
             crm_req = CRMAddRequest(
