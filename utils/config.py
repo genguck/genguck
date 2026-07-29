@@ -37,6 +37,12 @@ class Config:
             'google_api_key': os.getenv('SEARCH_GOOGLE_API_KEY', self.yaml_config.get('search', {}).get('google_api_key', '')),
             'google_cse_id': os.getenv('SEARCH_GOOGLE_CSE_ID', self.yaml_config.get('search', {}).get('google_cse_id', ''))
         }
+        self.google_maps = {
+            'api_key': os.getenv('GOOGLE_MAPS_API_KEY', self.yaml_config.get('google_maps', {}).get('api_key', '')),
+            'default_radius_km': self.yaml_config.get('google_maps', {}).get('default_radius_km', 50),
+            'max_results_per_search': self.yaml_config.get('google_maps', {}).get('max_results_per_search', 60),
+            'language': self.yaml_config.get('google_maps', {}).get('language', 'zh-CN'),
+        }
         self.crm = self.yaml_config.get('crm', {})
         self.logging = self.yaml_config.get('logging', {})
     

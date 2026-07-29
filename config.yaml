@@ -24,6 +24,12 @@ search:
   google_api_key: ""
   google_cse_id: ""
 
+google_maps:
+  api_key: ""
+  default_radius_km: 50
+  max_results_per_search: 60
+  language: "zh-CN"
+
 crm:
   table_name: "外贸客户"
   fields:
