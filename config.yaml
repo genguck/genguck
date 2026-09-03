@@ -25,7 +25,7 @@ search:
   google_cse_id: ""
 
 google_maps:
-  api_key: ""
+  api_key: "sk-1247a1fea10b4f4db70d83dbc64edc97"
   default_radius_km: 50
   max_results_per_search: 60
   language: "zh-CN"
