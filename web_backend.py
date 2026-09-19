@@ -726,44 +726,45 @@ def _local_translate(text: str) -> str:
         result = re.sub(re.escape(en), zh, result, flags=re.IGNORECASE)
     return result
 
-@app.post("/api/translate")
-async def translate_text(req: TranslateRequest, user: str = Depends(get_current_user)):
-    """文本翻译：依次尝试 MyMemory / LibreTranslate，全部失败降级到本地词汇表"""
-    text = (req.text or "").strip()
+class BatchTranslateRequest(BaseModel):
+    texts: List[str]
+    target: str = "zh-CN"
+    source: str = "auto"
+
+def _translate_single(text: str, target: str = "zh-CN", source: str = "auto") -> dict:
+    """单条文本翻译（同步，供单条/批量接口复用）"""
+    text = (text or "").strip()
     if not text:
         return {"original": "", "translated": "", "method": "empty"}
-    src = req.source if req.source != "auto" else "en"
+    src = source if source != "auto" else "en"
 
     def _try_local_glossary(original: str) -> str:
-        """尝试本地词汇表翻译，若结果与原文不同则返回，否则返回原文"""
         local = _local_translate(original)
         return local if local.strip().lower() != original.strip().lower() else original
 
-    # 1. MyMemory 在线翻译（免费，无需 Key，单次 ~500 字）
+    # 1. MyMemory 在线翻译
     try:
         chunks = _split_text(text, 480)
         parts = []
         ok = False
         for chunk in chunks:
             url = "https://api.mymemory.translated.net/get"
-            params = {"q": chunk, "langpair": f"{src}|{req.target}"}
+            params = {"q": chunk, "langpair": f"{src}|{target}"}
             resp = requests.get(url, params=params, timeout=8, headers={"User-Agent": "Mozilla/5.0"})
             if resp.status_code == 200:
                 data = resp.json()
                 t = data.get("responseData", {}).get("translatedText", "")
-                # 检测限流/错误响应
                 if t and "MYMEMORY WARNING" not in str(t).upper() and "QUOTA" not in str(t).upper() and not str(t).lower().startswith("error"):
                     parts.append(t)
                     ok = True
                 else:
-                    parts.append(chunk)  # 失败保留原文
+                    parts.append(chunk)
             else:
                 parts.append(chunk)
             time.sleep(0.2)
         if ok:
             translated = " ".join(parts).strip()
             if translated:
-                # 若在线翻译结果与原文相同（未真正翻译），用本地词汇表补充
                 if translated.strip().lower() == text.strip().lower():
                     local = _try_local_glossary(text)
                     if local != text:
@@ -771,16 +772,15 @@ async def translate_text(req: TranslateRequest, user: str = Depends(get_current_
                 return {"original": text, "translated": translated, "source_lang": src, "method": "online-mymemory"}
     except Exception:
         pass
-    # 2. LibreTranslate 备用公共实例
+    # 2. LibreTranslate 备用
     try:
         url = "https://libretranslate.com/translate"
-        payload = {"q": text[:3000], "source": src, "target": req.target, "format": "text"}
+        payload = {"q": text[:3000], "source": src, "target": target, "format": "text"}
         resp = requests.post(url, json=payload, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
         if resp.status_code == 200:
             data = resp.json()
             t = data.get("translatedText", "")
             if t:
-                # 若在线翻译结果与原文相同，用本地词汇表补充
                 if t.strip().lower() == text.strip().lower():
                     local = _try_local_glossary(text)
                     if local != text:
@@ -788,9 +788,26 @@ async def translate_text(req: TranslateRequest, user: str = Depends(get_current_
                 return {"original": text, "translated": t, "source_lang": src, "method": "online-libre"}
     except Exception:
         pass
-    # 3. 降级：本地词汇表翻译
+    # 3. 降级：本地词汇表
     translated = _local_translate(text)
     return {"original": text, "translated": translated, "method": "local-glossary"}
+
+@app.post("/api/translate")
+async def translate_text(req: TranslateRequest, user: str = Depends(get_current_user)):
+    """单条文本翻译"""
+    return _translate_single(req.text, req.target, req.source)
+
+@app.post("/api/translate/batch")
+async def translate_batch(req: BatchTranslateRequest, user: str = Depends(get_current_user)):
+    """批量文本翻译（并行处理，大幅减少总耗时）"""
+    texts = req.texts or []
+    if not texts:
+        return {"results": []}
+    # 用线程池并行执行同步翻译（requests是阻塞的）
+    loop = asyncio.get_event_loop()
+    tasks = [loop.run_in_executor(None, _translate_single, t, req.target, req.source) for t in texts]
+    results = await asyncio.gather(*tasks)
+    return {"results": list(results)}
 
 def _split_text(text: str, max_len: int) -> List[str]:
     """按句号/换行/长度切分文本，避免超过翻译接口长度限制"""

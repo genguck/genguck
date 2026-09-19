@@ -913,41 +913,47 @@ function showCustomerDetail(c) {
     translateCustomerDetail();
 }
 
-// 翻译客户详情弹窗中的所有英文字段为中文
+// 翻译客户详情弹窗中的所有英文字段为中文（批量请求，大幅减少耗时）
+const _detailCache = {};
 async function translateCustomerDetail() {
     const els = document.querySelectorAll('#cd-body .cd-translatable');
     if (!els.length) return;
-    // 收集去重后的文本
+    // 收集去重后的待翻译文本（跳过已缓存和纯中文）
     const textSet = new Set();
     els.forEach(el => {
         const t = (el.getAttribute('data-text') || '').trim();
-        if (t && !/^[\u4e00-\u9fa5]+$/.test(t)) textSet.add(t); // 跳过纯中文
+        if (t && !/^[\u4e00-\u9fa5]+$/.test(t) && !_detailCache[t]) textSet.add(t);
+    });
+    // 先用缓存回填已翻译的
+    els.forEach(el => {
+        const orig = (el.getAttribute('data-text') || '').trim();
+        const zh = _detailCache[orig];
+        if (zh && zh !== orig && !el.querySelector('.cd-zh')) {
+            el.innerHTML += ' <span class="cd-zh" style="color:#3b82f6;font-size:12px;margin-left:4px;">(' + escapeHtml(zh) + ')</span>';
+        }
     });
     if (!textSet.size) return;
     const texts = Array.from(textSet);
-    // 逐个翻译（避免接口限流），结果缓存
-    const cache = {};
-    for (const text of texts) {
-        if (cache[text]) continue;
-        try {
-            const res = await api('/translate', 'POST', { text: text, target: 'zh-CN' });
-            cache[text] = res.translated || text;
-        } catch (e) {
-            cache[text] = text;
-        }
+    // 批量翻译（一次请求，后端并行处理）
+    try {
+        const res = await api('/translate/batch', 'POST', { texts: texts, target: 'zh-CN' });
+        (res.results || []).forEach((r, i) => {
+            _detailCache[texts[i]] = r.translated || texts[i];
+        });
+    } catch (e) {
+        texts.forEach(t => { _detailCache[t] = t; });
     }
-    // 回填翻译结果：在原文后追加中文（蓝色小字）
+    // 回填所有翻译结果
     els.forEach(el => {
         const orig = (el.getAttribute('data-text') || '').trim();
-        const zh = cache[orig];
-        if (zh && zh !== orig) {
-            const cur = el.innerHTML;
-            el.innerHTML = cur + ' <span style="color:#3b82f6;font-size:12px;margin-left:4px;">(' + escapeHtml(zh) + ')</span>';
+        const zh = _detailCache[orig];
+        if (zh && zh !== orig && !el.querySelector('.cd-zh')) {
+            el.innerHTML += ' <span class="cd-zh" style="color:#3b82f6;font-size:12px;margin-left:4px;">(' + escapeHtml(zh) + ')</span>';
         }
     });
 }
 
-// 批量翻译卡片上的公司名称（带全局缓存，避免重复翻译）
+// 批量翻译卡片上的公司名称（批量请求 + 全局缓存）
 const _cardNameCache = {};
 async function translateCardNames() {
     const els = document.querySelectorAll('.card-translatable');
@@ -957,25 +963,24 @@ async function translateCardNames() {
         const t = (el.getAttribute('data-text') || '').trim();
         if (t && !/^[\u4e00-\u9fa5]+$/.test(t) && !_cardNameCache[t]) textSet.add(t);
     });
-    if (!textSet.size) {
-        // 全部已缓存，直接回填
-        els.forEach(el => {
-            const orig = (el.getAttribute('data-text') || '').trim();
-            const zh = _cardNameCache[orig];
-            if (zh && zh !== orig && !el.querySelector('.card-zh')) {
-                el.innerHTML += ' <span class="card-zh" style="color:#3b82f6;font-size:11px;">(' + escapeHtml(zh) + ')</span>';
-            }
-        });
-        return;
-    }
-    const texts = Array.from(textSet);
-    for (const text of texts) {
-        try {
-            const res = await api('/translate', 'POST', { text: text, target: 'zh-CN' });
-            _cardNameCache[text] = res.translated || text;
-        } catch (e) {
-            _cardNameCache[text] = text;
+    // 先用缓存回填
+    els.forEach(el => {
+        const orig = (el.getAttribute('data-text') || '').trim();
+        const zh = _cardNameCache[orig];
+        if (zh && zh !== orig && !el.querySelector('.card-zh')) {
+            el.innerHTML += ' <span class="card-zh" style="color:#3b82f6;font-size:11px;">(' + escapeHtml(zh) + ')</span>';
         }
+    });
+    if (!textSet.size) return;
+    const texts = Array.from(textSet);
+    // 批量翻译
+    try {
+        const res = await api('/translate/batch', 'POST', { texts: texts, target: 'zh-CN' });
+        (res.results || []).forEach((r, i) => {
+            _cardNameCache[texts[i]] = r.translated || texts[i];
+        });
+    } catch (e) {
+        texts.forEach(t => { _cardNameCache[t] = t; });
     }
     // 回填所有卡片
     els.forEach(el => {
