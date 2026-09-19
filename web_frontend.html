@@ -736,6 +736,16 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC'
     </div>
 </div>
 
+<div id="customer-detail-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1002;align-items:center;justify-content:center;">
+    <div style="background:white;border-radius:12px;padding:24px;max-width:820px;width:92%;max-height:90vh;overflow:hidden;display:flex;flex-direction:column;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <div class="card-title" id="cd-title" style="margin:0;">客户详情</div>
+            <button class="btn" style="background:#f3f4f6;color:#374151;padding:4px 12px;" onclick="closeCustomerDetail()">✕ 关闭</button>
+        </div>
+        <div id="cd-body" style="overflow-y:auto;flex:1;"></div>
+    </div>
+</div>
+
 <script>
 const API_BASE = '/api';
 let _authenticated = false;
@@ -743,12 +753,20 @@ let _emailType = 'standard';
 let _searchResults = [];
 let _crmEditId = null;
 let _workflowResults = [];
+let _recentCustomers = [];
 
 function escapeHtml(s) {
     if (!s) return '';
     const d = document.createElement('div');
     d.appendChild(document.createTextNode(s));
     return d.innerHTML;
+}
+
+function decodeEntities(s) {
+    if (!s) return '';
+    const txt = document.createElement('textarea');
+    txt.innerHTML = s;
+    return txt.value;
 }
 
 function showAlert(id, msg, type) {
@@ -759,6 +777,147 @@ function showAlert(id, msg, type) {
     el.textContent = msg;
     setTimeout(() => { el.classList.remove('show'); }, 4000);
 }
+
+function showCustomerDetail(c) {
+    if (!c) return;
+    document.getElementById('cd-title').textContent = '🔍 ' + (c.company_name || c.name || '客户详情');
+    const body = document.getElementById('cd-body');
+    const emails = c.emails || (c.email ? [c.email] : []);
+    const phones = c.phones || (c.phone ? [c.phone] : []);
+    const socials = c.social_links || [];
+    const whatsapp = c.whatsapp || '';
+    const scores = c.scores || {};
+
+    let html = '';
+
+    // ===== 基本信息卡片 =====
+    html += '<div style="background:#f9fafb;border-radius:10px;padding:16px;margin-bottom:14px;">';
+    html += '<div style="font-size:13px;color:#6b7280;margin-bottom:8px;font-weight:600;">📌 基本信息</div>';
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px;">';
+    html += '<div><span style="color:#6b7280;">公司名称：</span><span style="font-weight:500;">' + escapeHtml(c.company_name || c.name || '-') + '</span></div>';
+    html += '<div><span style="color:#6b7280;">行业：</span>' + escapeHtml(c.industry || '-') + '</div>';
+    html += '<div><span style="color:#6b7280;">国家/地区：</span>' + escapeHtml(c.country || c.region || '-') + '</div>';
+    html += '<div><span style="color:#6b7280;">网站：</span>' + (c.website ? '<a href="' + escapeHtml(c.website) + '" target="_blank" style="color:#667eea;word-break:break-all;">' + escapeHtml(c.website) + '</a>' : '-') + '</div>';
+    html += '<div><span style="color:#6b7280;">评分：</span><span class="level-badge level-' + (c.level || 'D') + '">' + (c.score || 0) + '分 ' + (c.level || 'D') + '级</span></div>';
+    html += '<div><span style="color:#6b7280;">状态：</span>' + escapeHtml(c.status || '待开发') + '</div>';
+    html += '</div>';
+    if (c.address) html += '<div style="margin-top:10px;font-size:13px;"><span style="color:#6b7280;">地址：</span>' + escapeHtml(decodeEntities(c.address)) + '</div>';
+    if (c.crawl_note) html += '<div style="margin-top:6px;font-size:12px;color:#9ca3af;">爬取备注：' + escapeHtml(c.crawl_note) + '</div>';
+    html += '</div>';
+
+    // ===== 联系方式（突出展示 WhatsApp）=====
+    html += '<div style="border:1px solid #e5e7eb;border-radius:10px;padding:16px;margin-bottom:14px;">';
+    html += '<div style="font-size:13px;color:#6b7280;margin-bottom:10px;font-weight:600;">📞 联系方式</div>';
+
+    // WhatsApp 突出显示
+    if (whatsapp) {
+        const waDisplay = /^\d+$/.test(whatsapp) ? whatsapp : whatsapp;
+        const waLink = /^https?:\/\//.test(whatsapp) ? whatsapp : 'https://wa.me/' + whatsapp.replace(/[^\d]/g, '');
+        html += '<div style="background:linear-gradient(135deg,#25D366 0%,#128C7E 100%);color:white;border-radius:8px;padding:12px 14px;margin-bottom:10px;display:flex;align-items:center;gap:10px;">';
+        html += '<span style="font-size:22px;">💬</span>';
+        html += '<div style="flex:1;">';
+        html += '<div style="font-size:12px;opacity:0.9;">WhatsApp</div>';
+        html += '<div style="font-size:15px;font-weight:600;word-break:break-all;">' + escapeHtml(waDisplay) + '</div>';
+        html += '</div>';
+        html += '<a href="' + escapeHtml(waLink) + '" target="_blank" style="background:white;color:#128C7E;padding:6px 14px;border-radius:6px;text-decoration:none;font-size:12px;font-weight:600;white-space:nowrap;">打开 WhatsApp</a>';
+        html += '</div>';
+    } else {
+        html += '<div style="background:#f3f4f6;border-radius:8px;padding:10px 14px;margin-bottom:10px;font-size:13px;color:#6b7280;display:flex;align-items:center;gap:8px;">';
+        html += '<span style="font-size:18px;">💬</span><span>未获取到 WhatsApp 联系方式</span></div>';
+    }
+
+    // 邮箱
+    html += '<div style="margin-bottom:8px;"><span style="font-size:13px;color:#374151;font-weight:500;">📧 邮箱：</span>';
+    if (emails.length) {
+        html += emails.map(e => '<a href="mailto:' + escapeHtml(e) + '" style="color:#667eea;margin-right:10px;word-break:break-all;">' + escapeHtml(e) + '</a>').join('');
+    } else {
+        html += '<span style="color:#9ca3af;font-size:13px;">暂无</span>';
+    }
+    html += '</div>';
+
+    // 电话
+    html += '<div><span style="font-size:13px;color:#374151;font-weight:500;">📞 电话：</span>';
+    if (phones.length) {
+        html += phones.map(p => '<a href="tel:' + escapeHtml(p) + '" style="color:#667eea;margin-right:10px;">' + escapeHtml(p) + '</a>').join('');
+    } else {
+        html += '<span style="color:#9ca3af;font-size:13px;">暂无</span>';
+    }
+    html += '</div>';
+    html += '</div>';
+
+    // ===== 社交媒体 =====
+    if (socials.length) {
+        html += '<div style="border:1px solid #e5e7eb;border-radius:10px;padding:16px;margin-bottom:14px;">';
+        html += '<div style="font-size:13px;color:#6b7280;margin-bottom:10px;font-weight:600;">🌐 社交媒体</div>';
+        html += '<div style="display:flex;gap:8px;flex-wrap:wrap;">';
+        socials.forEach(s => {
+            html += '<a href="' + escapeHtml(s.url) + '" target="_blank" style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;background:#eef2ff;color:#4f46e5;border-radius:6px;text-decoration:none;font-size:12px;font-weight:500;">';
+            html += escapeHtml(s.platform) + ' ↗</a>';
+        });
+        html += '</div></div>';
+    }
+
+    // ===== 评分明细 =====
+    if (Object.keys(scores).length) {
+        html += '<div style="border:1px solid #e5e7eb;border-radius:10px;padding:16px;margin-bottom:14px;">';
+        html += '<div style="font-size:13px;color:#6b7280;margin-bottom:10px;font-weight:600;">📊 评分明细</div>';
+        const scoreLabels = { website_quality: '网站质量(30)', contact_info: '联系方式(35)', industry_match: '行业匹配(20)', company_info: '公司信息(15)' };
+        const scoreMax = { website_quality: 30, contact_info: 35, industry_match: 20, company_info: 15 };
+        Object.keys(scores).forEach(k => {
+            const max = scoreMax[k] || 100;
+            const val = scores[k] || 0;
+            html += '<div class="score-row" style="margin-bottom:6px;"><span class="score-label" style="width:120px;font-size:12px;">' + (scoreLabels[k] || k) + '</span>';
+            html += '<div class="score-bar"><div class="score-bar-fill" style="width:' + (val / max * 100) + '%;"></div></div>';
+            html += '<span class="score-num" style="font-size:12px;">' + val + '/' + max + '</span></div>';
+        });
+        html += '</div>';
+    }
+
+    // ===== 产品与认证 =====
+    if ((c.products && c.products.length) || (c.certifications && c.certifications.length)) {
+        html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">';
+        if (c.products && c.products.length) {
+            html += '<div style="border:1px solid #e5e7eb;border-radius:10px;padding:14px;">';
+            html += '<div style="font-size:13px;color:#6b7280;margin-bottom:8px;font-weight:600;">🏭 产品/服务</div>';
+            html += '<div style="display:flex;gap:6px;flex-wrap:wrap;">';
+            c.products.slice(0, 12).forEach(p => {
+                html += '<span style="padding:3px 10px;background:#f3f4f6;border-radius:12px;font-size:12px;color:#374151;">' + escapeHtml(decodeEntities(p)) + '</span>';
+            });
+            html += '</div></div>';
+        }
+        if (c.certifications && c.certifications.length) {
+            html += '<div style="border:1px solid #e5e7eb;border-radius:10px;padding:14px;">';
+            html += '<div style="font-size:13px;color:#6b7280;margin-bottom:8px;font-weight:600;">✅ 认证资质</div>';
+            html += '<div style="display:flex;gap:6px;flex-wrap:wrap;">';
+            c.certifications.forEach(ct => {
+                html += '<span style="padding:3px 10px;background:#d1fae5;color:#065f46;border-radius:12px;font-size:12px;font-weight:500;">' + escapeHtml(ct) + '</span>';
+            });
+            html += '</div></div>';
+        }
+        html += '</div>';
+    }
+
+    // ===== 备注 =====
+    if (c.notes || c.notes) {
+        html += '<div style="border:1px solid #e5e7eb;border-radius:10px;padding:14px;">';
+        html += '<div style="font-size:13px;color:#6b7280;margin-bottom:6px;font-weight:600;">📝 备注</div>';
+        html += '<div style="font-size:13px;color:#374151;line-height:1.6;">' + escapeHtml(c.notes || c.notes) + '</div>';
+        html += '</div>';
+    }
+
+    body.innerHTML = html;
+    document.getElementById('customer-detail-modal').style.display = 'flex';
+}
+
+function closeCustomerDetail() {
+    document.getElementById('customer-detail-modal').style.display = 'none';
+}
+
+// 点击遮罩关闭
+document.addEventListener('click', function(e) {
+    const m = document.getElementById('customer-detail-modal');
+    if (e.target === m) closeCustomerDetail();
+});
 
 async function api(path, method, body) {
     method = method || 'GET';
@@ -849,26 +1008,26 @@ async function loadDashboard() {
 
         // 最近客户（可点击查看详情）
         const recentCust = res.recent_customers || [];
+        _recentCustomers = recentCust;
         const rcEl = document.getElementById('recent-customers');
         if (rcEl) {
             if (recentCust.length === 0) {
                 rcEl.innerHTML = '<div style="color:#9ca3af;font-size:13px;">暂无客户</div>';
             } else {
                 rcEl.className = 'customer-grid';
-                rcEl.innerHTML = recentCust.map(c => {
-                    const hasId = c.id && c.id !== '';
-                    const click = hasId ? 'onclick="openCRMModal(\'' + escapeHtml(c.id) + '\');editCRMFields(\'' + escapeHtml(c.id) + '\')"' : '';
-                    return '<div class="customer-card" style="cursor:' + (hasId ? 'pointer' : 'default') + ';" ' + click + '>' +
-                        '<div class="customer-name">' + escapeHtml(c.name) + '</div>' +
-                        (c.website ? '<a class="customer-web" href="' + escapeHtml(c.website) + '" target="_blank">' + escapeHtml(c.website) + '</a>' : '') +
+                rcEl.innerHTML = recentCust.map((c, idx) => {
+                    return '<div class="customer-card" style="cursor:pointer;" onclick="showCustomerDetail(_recentCustomers[' + idx + '])" title="点击查看详情">' +
+                        '<div class="customer-name">' + escapeHtml(c.name || c.company_name) + '</div>' +
+                        (c.website ? '<a class="customer-web" href="' + escapeHtml(c.website) + '" target="_blank" onclick="event.stopPropagation()">' + escapeHtml(c.website) + '</a>' : '') +
                         '<div class="customer-info">' +
                             (c.industry ? '🏭 行业: ' + escapeHtml(c.industry) + '<br>' : '') +
                             '⭐ 评分: ' + escapeHtml(String(c.score)) + '<br>' +
                             '📊 等级: <span class="level-badge level-' + escapeHtml(c.level) + '">' + escapeHtml(c.level) + '</span><br>' +
                             '📌 状态: ' + escapeHtml(c.status) +
                             (c.email ? '<br>📧 ' + escapeHtml(c.email) : '') +
+                            (c.whatsapp ? '<br>💬 <span style="color:#128C7E;">WhatsApp</span>' : '') +
                         '</div>' +
-                        (hasId ? '<div class="customer-footer"><span style="font-size:11px;color:#9ca3af;">点击查看详情</span></div>' : '') +
+                        '<div class="customer-footer"><span style="font-size:11px;color:#667eea;">点击查看详情 →</span></div>' +
                     '</div>';
                 }).join('');
             }
@@ -1095,7 +1254,7 @@ async function searchCustomers() {
     const btn = document.getElementById('sc-btn');
     btn.disabled = true; btn.innerHTML = '<span class="loading"></span>搜索中...';
     try {
-        const res = await api('/customer/search', { industry, region: document.getElementById('sc-region').value.trim(), count: parseInt(document.getElementById('sc-count').value) || 10 });
+        const res = await api('/customer/search', 'POST', { industry, region: document.getElementById('sc-region').value.trim(), count: parseInt(document.getElementById('sc-count').value) || 10 });
         _searchResults = res.customers || [];
         document.getElementById('sc-count-label').textContent = res.count + ' 个';
         document.getElementById('sc-batch-score-btn').disabled = _searchResults.length === 0;
@@ -1116,18 +1275,20 @@ function renderSearchResults() {
     }
     container.className = 'customer-grid';
     container.innerHTML = _searchResults.map((c, i) =>
-        '<div class="customer-card">' +
+        '<div class="customer-card" style="cursor:pointer;" onclick="showCustomerDetail(_searchResults[' + i + '])" title="点击查看详情">' +
             '<div class="customer-name">' + escapeHtml(c.company_name) + '</div>' +
-            '<a class="customer-web" href="' + escapeHtml(c.website) + '" target="_blank">' + escapeHtml(c.website) + '</a>' +
-            '<div class="customer-info">📍 ' + escapeHtml(c.country || '') + '<br>' +
+            '<a class="customer-web" href="' + escapeHtml(c.website) + '" target="_blank" onclick="event.stopPropagation()">' + escapeHtml(c.website) + '</a>' +
+            '<div class="customer-info">📍 ' + escapeHtml(c.country || '') +
+                (c.whatsapp ? ' &nbsp; 💬 <span style="color:#128C7E;">WhatsApp</span>' : '') + '<br>' +
                 (c.emails && c.emails.length ? '📧 ' + c.emails.length + '个邮箱<br>' : '') +
                 (c.phones && c.phones.length ? '📞 ' + c.phones.length + '个电话' : '') +
             '</div>' +
             '<div class="customer-footer">' +
                 '<span class="level-badge level-' + c.level + '">' + c.score + '分 ' + c.level + '级</span>' +
                 '<div class="action-btns">' +
-                    '<button class="btn btn-sm btn-info" onclick="fillAndGoEmail(' + i + ')">🤖 AI生成</button>' +
-                    '<button class="btn btn-sm btn-success" onclick="addOneToCRM(' + i + ')">加CRM</button>' +
+                    '<button class="btn btn-sm btn-info" onclick="event.stopPropagation();fillAndGoEmail(' + i + ')">🤖 AI生成</button>' +
+                    '<button class="btn btn-sm btn-success" onclick="event.stopPropagation();addOneToCRM(' + i + ')">加CRM</button>' +
+                    '<button class="btn btn-sm btn-ghost" style="background:#eef2ff;color:#4f46e5;border:none;" onclick="event.stopPropagation();showCustomerDetail(_searchResults[' + i + '])">详情</button>' +
                 '</div>' +
             '</div>' +
         '</div>'
@@ -1591,13 +1752,14 @@ async function startWorkflow() {
         }
         document.getElementById('wf-summary').textContent = '🎉 ' + res.summary;
         document.getElementById('wf-export-btn').style.display = 'inline-flex';
+        _workflowResults = res.customers;
         document.getElementById('wf-results').innerHTML =
             '<div class="customer-grid">' +
             res.customers.map((c, idx) =>
-                '<div class="customer-card">' +
+                '<div class="customer-card" style="cursor:pointer;" onclick="showCustomerDetail(_workflowResults[' + idx + '])" title="点击查看详情">' +
                     '<div class="customer-name">' + escapeHtml(c.company_name) + '</div>' +
                     '<div class="customer-web">' + escapeHtml(c.website) + '</div>' +
-                    '<div style="font-size:12px;color:#6b7280;margin:6px 0;">📍 ' + escapeHtml(c.country || '') + '</div>' +
+                    '<div style="font-size:12px;color:#6b7280;margin:6px 0;">📍 ' + escapeHtml(c.country || '') + (c.whatsapp ? ' &nbsp; 💬 <span style="color:#128C7E;">WhatsApp</span>' : '') + '</div>' +
                     '<div class="score-detail">' +
                         Object.keys(c.scores || {}).map(k => {
                             const max = k === 'website_quality' ? 30 : k === 'contact_info' ? 35 : k === 'industry_match' ? 20 : 15;
@@ -1608,13 +1770,12 @@ async function startWorkflow() {
                     '</div>' +
                     '<div class="customer-footer">' +
                         '<span class="level-badge level-' + c.level + '">' + c.score + '分 ' + c.level + '级</span>' +
-                        '<span style="font-size:12px;color:#6b7280;">' + (c.email_sent ? '✉️ 已发信' : '📋 已录入') + '</span>' +
+                        '<span style="font-size:12px;color:#667eea;">' + (c.email_sent ? '✉️ 已发信' : '📋 已录入') + ' · 查看详情 →</span>' +
                     '</div>' +
                 '</div>'
             ).join('') +
             '</div>';
-        _workflowResults = res.customers;
-        showAlert('wf-alert', '一键获客完成！', 'success');
+        showAlert('wf-alert', '一键获客完成！点击客户卡片查看详情（含WhatsApp）', 'success');
     } catch (e) { showAlert('wf-alert', e.message, 'error'); }
     finally { btn.disabled = false; btn.innerHTML = '🚀 开始一键获客'; loadDashboard(); loadHistory(); }
 }

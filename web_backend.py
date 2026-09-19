@@ -481,6 +481,13 @@ class CRMAddRequest(BaseModel):
     level: Optional[str] = None
     status: str = "待开发"
     notes: str = ""
+    whatsapp: str = ""
+    social_links: List[Dict] = []
+    products: List[str] = []
+    certifications: List[str] = []
+    emails: List[str] = []
+    phones: List[str] = []
+    address: str = ""
 
 class CRMUpdateRequest(BaseModel):
     company_name: Optional[str] = None
@@ -492,6 +499,13 @@ class CRMUpdateRequest(BaseModel):
     level: Optional[str] = None
     status: Optional[str] = None
     notes: Optional[str] = None
+    whatsapp: Optional[str] = None
+    social_links: Optional[List[Dict]] = None
+    products: Optional[List[str]] = None
+    certifications: Optional[List[str]] = None
+    emails: Optional[List[str]] = None
+    phones: Optional[List[str]] = None
+    address: Optional[str] = None
 
 class SMTPConfigRequest(BaseModel):
     provider: str = ""
@@ -530,6 +544,9 @@ async def search_customers(req: SearchRequest, user: str = Depends(get_current_u
         c["phones"] = []
         c["address"] = ""
         c["certifications"] = []
+        c["social_links"] = []
+        c["whatsapp"] = ""
+        c["products"] = []
         # 尝试爬取（最多1个，避免超时）
         if c.get("website") and len(results) < 2:
             try:
@@ -538,6 +555,14 @@ async def search_customers(req: SearchRequest, user: str = Depends(get_current_u
                 c["phones"] = info["phones"][:3]
                 c["address"] = info["address"]
                 c["certifications"] = info["certifications"][:5]
+                c["social_links"] = info.get("social_links", [])
+                c["products"] = info.get("products", [])
+                for s in c["social_links"]:
+                    if s.get("platform") == "WhatsApp":
+                        wa_url = s.get("url", "")
+                        wa_match = re.search(r'wa\.me/(\d+)', wa_url)
+                        c["whatsapp"] = wa_match.group(1) if wa_match else wa_url
+                        break
             except Exception:
                 pass
         # 评分
@@ -1307,6 +1332,13 @@ async def crm_add(req: CRMAddRequest, user: str = Depends(get_current_user)):
         "level": req.level or ("A" if req.score >= 85 else "B" if req.score >= 70 else "C" if req.score >= 55 else "D"),
         "status": _sanitize_html(req.status or "待开发"),
         "notes": _sanitize_html(req.notes.strip()),
+        "whatsapp": _sanitize_html(req.whatsapp or ""),
+        "social_links": req.social_links or [],
+        "products": req.products or [],
+        "certifications": req.certifications or [],
+        "emails": req.emails or [],
+        "phones": req.phones or [],
+        "address": _sanitize_html(req.address or ""),
         "created_at": int(time.time()),
         "updated_at": int(time.time()),
     }
@@ -1347,7 +1379,7 @@ async def crm_update(customer_id: str, req: CRMUpdateRequest, user: str = Depend
                 raise HTTPException(status_code=400, detail="邮箱格式不合法")
             for k, v in update_data.items():
                 if isinstance(v, str):
-                    if k in ("company_name", "industry", "status", "notes", "phone"):
+                    if k in ("company_name", "industry", "status", "notes", "phone", "whatsapp", "address"):
                         c[k] = _sanitize_html(v)
                     elif k == "website":
                         c[k] = v.strip()
@@ -1429,8 +1461,26 @@ async def workflow_full(req: WorkflowRequest, user: str = Depends(get_current_us
                 c["phones"] = info["phones"][:3]
                 c["address"] = info["address"]
                 c["certifications"] = info["certifications"][:5]
+                # 社交链接 & WhatsApp
+                c["social_links"] = info.get("social_links", [])
+                c["products"] = info.get("products", [])
+                c["whatsapp"] = ""
+                for s in c["social_links"]:
+                    if s.get("platform") == "WhatsApp":
+                        wa_url = s.get("url", "")
+                        # 从 wa.me/<number> 或 whatsapp.com 链接中提取号码
+                        wa_match = re.search(r'wa\.me/(\d+)', wa_url)
+                        if wa_match:
+                            c["whatsapp"] = wa_match.group(1)
+                        else:
+                            c["whatsapp"] = wa_url
+                        break
+                # 爬取备注（成功/失败）
+                c["crawl_note"] = info.get("note", "")
             except Exception:
-                pass
+                c["social_links"] = []
+                c["whatsapp"] = ""
+                c["products"] = []
         # 评分
         score_result = _evaluate_company(c, req.industry)
         c["score"] = score_result["total_score"]
@@ -1449,6 +1499,13 @@ async def workflow_full(req: WorkflowRequest, user: str = Depends(get_current_us
                 score=c["score"],
                 level=c["level"],
                 status="待开发",
+                whatsapp=c.get("whatsapp", ""),
+                social_links=c.get("social_links", []),
+                products=c.get("products", []),
+                certifications=c.get("certifications", []),
+                emails=c.get("emails", []),
+                phones=c.get("phones", []),
+                address=c.get("address", ""),
             )
             crm_record = await crm_add(crm_req, user)
             c["crm_id"] = crm_record["customer"]["id"]
@@ -1565,6 +1622,7 @@ async def dashboard_stats(user: str = Depends(get_current_user)):
     recent_customers = [{
         "id": c.get("id", ""),
         "name": c.get("company_name", ""),
+        "company_name": c.get("company_name", ""),
         "website": c.get("website", ""),
         "industry": c.get("industry", ""),
         "score": c.get("score", 0),
@@ -1572,6 +1630,14 @@ async def dashboard_stats(user: str = Depends(get_current_user)):
         "status": c.get("status", "待开发"),
         "email": c.get("email", ""),
         "phone": c.get("phone", ""),
+        "whatsapp": c.get("whatsapp", ""),
+        "social_links": c.get("social_links", []),
+        "products": c.get("products", []),
+        "certifications": c.get("certifications", []),
+        "emails": c.get("emails", []),
+        "phones": c.get("phones", []),
+        "address": c.get("address", ""),
+        "notes": c.get("notes", ""),
         "created_at": c.get("created_at", 0),
     } for c in sorted_customers[:8]]
     # 最近邮件（按发送时间倒序，最多 8 条）
