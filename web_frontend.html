@@ -412,6 +412,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC'
                         <option value="50">50</option>
                     </select>
                 </div>
+                <div class="form-group" style="flex:1.5;"><label>产品名称（可选）</label>
+                    <input type="text" id="sc-product" list="wf-product-list" placeholder="输入产品名称，如 LED Light" oninput="translateProductName('sc-product', 'sc-product-zh')">
+                    <div id="sc-product-zh" style="margin-top:4px;font-size:12px;color:#3b82f6;min-height:16px;"></div>
+                </div>
             </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
                 <button class="btn btn-primary" onclick="searchCustomers()" id="sc-btn">开始搜索</button>
@@ -1372,11 +1376,12 @@ async function showStatDetail(type) {
 
 async function searchCustomers() {
     const industry = document.getElementById('sc-industry').value.trim();
-    if (!industry) { showAlert('sc-alert', '请输入行业/产品', 'error'); return; }
+    if (!industry) { showAlert('sc-alert', '请选择行业/产品', 'error'); return; }
+    const product = document.getElementById('sc-product').value.trim();
     const btn = document.getElementById('sc-btn');
     btn.disabled = true; btn.innerHTML = '<span class="loading"></span>搜索中...';
     try {
-        const res = await api('/customer/search', 'POST', { industry, region: document.getElementById('sc-region').value.trim(), count: parseInt(document.getElementById('sc-count').value) || 10 });
+        const res = await api('/customer/search', 'POST', { industry, region: document.getElementById('sc-region').value.trim(), product, count: parseInt(document.getElementById('sc-count').value) || 10 });
         _searchResults = res.customers || [];
         document.getElementById('sc-count-label').textContent = res.count + ' 个';
         document.getElementById('sc-batch-score-btn').disabled = _searchResults.length === 0;

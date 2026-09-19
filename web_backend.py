@@ -236,14 +236,23 @@ def _save_smtp_config(cfg: Dict) -> None:
     _save_json(SMTP_CONFIG, cfg)
 
 # ==================== 业务函数 ====================
-def _real_search(industry: str, count: int = 5, region: str = "") -> List[Dict]:
+def _real_search(industry: str, count: int = 5, region: str = "", product: str = "") -> List[Dict]:
     """基于种子库和真实网站爬取的搜索"""
     industry_lower = industry.lower()
+    product_lower = (product or "").lower()
     companies = []
-    # 1. 优先使用种子库
+    # 1. 优先使用种子库（按行业+产品名匹配）
     for k, lst in SEED_COMPANIES.items():
         if k in industry_lower or industry_lower in k:
             companies.extend(lst)
+    # 2. 若有产品名，尝试从种子库中匹配产品相关公司
+    if product_lower:
+        for lst in SEED_COMPANIES.values():
+            for c in lst:
+                # 匹配公司描述中的产品关键词
+                desc = (c.get('description', '') + ' ' + c.get('industry', '')).lower()
+                if product_lower in desc and c not in companies:
+                    companies.append(c)
     if not companies:
         for lst in SEED_COMPANIES.values():
             companies.extend(lst)
@@ -430,6 +439,7 @@ async def get_current_user(api_key: str = Depends(api_key_header)):
 class SearchRequest(BaseModel):
     industry: str
     region: str = ""
+    product: str = ""
     count: int = Field(10, ge=1, le=50)
 
 class ScoreRequest(BaseModel):
@@ -540,7 +550,7 @@ async def health(request: Request):
 
 @app.post("/api/customer/search")
 async def search_customers(req: SearchRequest, user: str = Depends(get_current_user)):
-    customers = _real_search(req.industry, req.count, req.region)
+    customers = _real_search(req.industry, req.count, req.region, req.product)
     results = []
     for c in customers:
         c = dict(c)
