@@ -344,9 +344,73 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC'
         <div class="card">
             <div class="card-title">🔍 客户搜索</div>
             <div class="form-row">
-                <div class="form-group" style="flex:2;"><label>行业/产品</label><input type="text" id="sc-industry" placeholder="如：electronics"></div>
-                <div class="form-group"><label>目标地区</label><input type="text" id="sc-region" placeholder="USA"></div>
-                <div class="form-group"><label>数量</label><input type="number" id="sc-count" value="10" min="1" max="50"></div>
+                <div class="form-group" style="flex:2;"><label>行业/产品</label>
+                    <select id="sc-industry">
+                        <option value="">-- 请选择行业 --</option>
+                        <option value="electronics">电子产品</option>
+                        <option value="semiconductor">半导体</option>
+                        <option value="furniture">家具</option>
+                        <option value="textile">纺织服装</option>
+                        <option value="machinery">机械</option>
+                        <option value="automotive">汽车配件</option>
+                        <option value="construction">建材</option>
+                        <option value="chemical">化工</option>
+                        <option value="food">食品</option>
+                        <option value="medical">医疗器械</option>
+                        <option value="packaging">包装</option>
+                        <option value="metal">金属制品</option>
+                        <option value="plastic">塑料制品</option>
+                        <option value="ceramic">陶瓷</option>
+                        <option value="glass">玻璃制品</option>
+                        <option value="toys">玩具</option>
+                        <option value="gifts">礼品</option>
+                        <option value="hardware">五金</option>
+                        <option value="lighting">灯具照明</option>
+                        <option value="home appliances">家用电器</option>
+                    </select>
+                </div>
+                <div class="form-group"><label>目标地区</label>
+                    <select id="sc-region">
+                        <option value="">-- 全部地区 --</option>
+                        <option value="USA">美国</option>
+                        <option value="Canada">加拿大</option>
+                        <option value="Mexico">墨西哥</option>
+                        <option value="Germany">德国</option>
+                        <option value="UK">英国</option>
+                        <option value="France">法国</option>
+                        <option value="Italy">意大利</option>
+                        <option value="Spain">西班牙</option>
+                        <option value="Netherlands">荷兰</option>
+                        <option value="Russia">俄罗斯</option>
+                        <option value="Japan">日本</option>
+                        <option value="South Korea">韩国</option>
+                        <option value="India">印度</option>
+                        <option value="Australia">澳大利亚</option>
+                        <option value="Brazil">巴西</option>
+                        <option value="Argentina">阿根廷</option>
+                        <option value="UAE">阿联酋</option>
+                        <option value="Saudi Arabia">沙特</option>
+                        <option value="Turkey">土耳其</option>
+                        <option value="Egypt">埃及</option>
+                        <option value="South Africa">南非</option>
+                        <option value="Europe">欧洲</option>
+                        <option value="Southeast Asia">东南亚</option>
+                        <option value="Middle East">中东</option>
+                        <option value="Africa">非洲</option>
+                        <option value="South America">南美洲</option>
+                        <option value="Oceania">大洋洲</option>
+                    </select>
+                </div>
+                <div class="form-group"><label>数量</label>
+                    <select id="sc-count">
+                        <option value="5">5</option>
+                        <option value="10" selected>10</option>
+                        <option value="15">15</option>
+                        <option value="20">20</option>
+                        <option value="30">30</option>
+                        <option value="50">50</option>
+                    </select>
+                </div>
             </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
                 <button class="btn btn-primary" onclick="searchCustomers()" id="sc-btn">开始搜索</button>
