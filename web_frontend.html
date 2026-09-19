@@ -277,28 +277,28 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC'
                 <div class="form-group"><label>产品名称</label>
                     <input type="text" id="wf-product" list="wf-product-list" placeholder="选择或输入产品" oninput="translateProductName('wf-product', 'wf-product-zh')">
                     <datalist id="wf-product-list">
-                        <option value="LED Light"><option value="Solar Panel"><option value="Power Bank">
-                        <option value="Bluetooth Speaker"><option value="Smart Watch"><option value="USB Cable">
-                        <option value="Phone Case"><option value="Earphone"><option value="Laptop">
-                        <option value="Office Chair"><option value="Dining Table"><option value="Sofa">
-                        <option value="T-Shirt"><option value="Jeans"><option value="Jacket">
-                        <option value="Towel"><option value="Bed Sheet"><option value="Curtain">
-                        <option value="Gear"><option value="Bearing"><option value="Motor">
-                        <option value="Brake Pad"><option value="Spark Plug"><option value="Tire">
-                        <option value="Cement"><option value="Tile"><option value="Door">
-                        <option value="Chemical"><option value="Fertilizer"><option value="Dye">
-                        <option value="Rice"><option value="Tea"><option value="Seafood">
-                        <option value="Stethoscope"><option value="Mask"><option value="Bandage">
-                        <option value="Carton Box"><option value="Bubble Wrap"><option value="Tape">
-                        <option value="Steel Pipe"><option value="Aluminum Profile"><option value="Wire">
-                        <option value="Plastic Bottle"><option value="Plastic Bag"><option value="Container">
-                        <option value="Ceramic Cup"><option value="Ceramic Tile"><option value="Porcelain">
-                        <option value="Glass Bottle"><option value="Mirror"><option value="Glassware">
-                        <option value="Action Figure"><option value="Building Block"><option value="Plush Toy">
-                        <option value="Mug"><option value="Keychain"><option value="Calendar">
-                        <option value="Screwdriver"><option value="Wrench"><option value="Drill">
-                        <option value="Ceiling Light"><option value="Table Lamp"><option value="Floodlight">
-                        <option value="Refrigerator"><option value="Washing Machine"><option value="Microwave">
+                        <option value="LED灯"><option value="太阳能板"><option value="充电宝">
+                        <option value="蓝牙音箱"><option value="智能手表"><option value="USB数据线">
+                        <option value="手机壳"><option value="耳机"><option value="笔记本电脑">
+                        <option value="办公椅"><option value="餐桌"><option value="沙发">
+                        <option value="T恤"><option value="牛仔裤"><option value="夹克">
+                        <option value="毛巾"><option value="床单"><option value="窗帘">
+                        <option value="齿轮"><option value="轴承"><option value="电机">
+                        <option value="刹车片"><option value="火花塞"><option value="轮胎">
+                        <option value="水泥"><option value="瓷砖"><option value="门">
+                        <option value="化工产品"><option value="化肥"><option value="染料">
+                        <option value="大米"><option value="茶叶"><option value="海鲜">
+                        <option value="听诊器"><option value="口罩"><option value="绷带">
+                        <option value="纸箱"><option value="气泡膜"><option value="胶带">
+                        <option value="钢管"><option value="铝型材"><option value="电线">
+                        <option value="塑料瓶"><option value="塑料袋"><option value="集装箱">
+                        <option value="陶瓷杯"><option value="瓷砖"><option value="瓷器">
+                        <option value="玻璃瓶"><option value="镜子"><option value="玻璃制品">
+                        <option value="手办"><option value="积木"><option value="毛绒玩具">
+                        <option value="马克杯"><option value="钥匙扣"><option value="日历">
+                        <option value="螺丝刀"><option value="扳手"><option value="电钻">
+                        <option value="吸顶灯"><option value="台灯"><option value="泛光灯">
+                        <option value="冰箱"><option value="洗衣机"><option value="微波炉">
                     </datalist>
                     <div id="wf-product-zh" style="margin-top:4px;font-size:12px;color:#3b82f6;min-height:16px;"></div>
                 </div>
@@ -413,7 +413,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC'
                     </select>
                 </div>
                 <div class="form-group" style="flex:1.5;"><label>产品名称（可选）</label>
-                    <input type="text" id="sc-product" list="wf-product-list" placeholder="输入产品名称，如 LED Light" oninput="translateProductName('sc-product', 'sc-product-zh')">
+                    <input type="text" id="sc-product" list="wf-product-list" placeholder="输入产品名称，如 LED灯" oninput="translateProductName('sc-product', 'sc-product-zh')">
                     <div id="sc-product-zh" style="margin-top:4px;font-size:12px;color:#3b82f6;min-height:16px;"></div>
                 </div>
             </div>
@@ -759,6 +759,37 @@ let _searchResults = [];
 let _crmEditId = null;
 let _workflowResults = [];
 let _recentCustomers = [];
+
+// 产品名称中英文映射（用户选择中文，提交时转英文给后端搜索）
+const PRODUCT_ZH_TO_EN = {
+    'LED灯': 'LED Light', '太阳能板': 'Solar Panel', '充电宝': 'Power Bank',
+    '蓝牙音箱': 'Bluetooth Speaker', '智能手表': 'Smart Watch', 'USB数据线': 'USB Cable',
+    '手机壳': 'Phone Case', '耳机': 'Earphone', '笔记本电脑': 'Laptop',
+    '办公椅': 'Office Chair', '餐桌': 'Dining Table', '沙发': 'Sofa',
+    'T恤': 'T-Shirt', '牛仔裤': 'Jeans', '夹克': 'Jacket',
+    '毛巾': 'Towel', '床单': 'Bed Sheet', '窗帘': 'Curtain',
+    '齿轮': 'Gear', '轴承': 'Bearing', '电机': 'Motor',
+    '刹车片': 'Brake Pad', '火花塞': 'Spark Plug', '轮胎': 'Tire',
+    '水泥': 'Cement', '瓷砖': 'Tile', '门': 'Door',
+    '化工产品': 'Chemical', '化肥': 'Fertilizer', '染料': 'Dye',
+    '大米': 'Rice', '茶叶': 'Tea', '海鲜': 'Seafood',
+    '听诊器': 'Stethoscope', '口罩': 'Mask', '绷带': 'Bandage',
+    '纸箱': 'Carton Box', '气泡膜': 'Bubble Wrap', '胶带': 'Tape',
+    '钢管': 'Steel Pipe', '铝型材': 'Aluminum Profile', '电线': 'Wire',
+    '塑料瓶': 'Plastic Bottle', '塑料袋': 'Plastic Bag', '集装箱': 'Container',
+    '陶瓷杯': 'Ceramic Cup', '瓷器': 'Porcelain',
+    '玻璃瓶': 'Glass Bottle', '镜子': 'Mirror', '玻璃制品': 'Glassware',
+    '手办': 'Action Figure', '积木': 'Building Block', '毛绒玩具': 'Plush Toy',
+    '马克杯': 'Mug', '钥匙扣': 'Keychain', '日历': 'Calendar',
+    '螺丝刀': 'Screwdriver', '扳手': 'Wrench', '电钻': 'Drill',
+    '吸顶灯': 'Ceiling Light', '台灯': 'Table Lamp', '泛光灯': 'Floodlight',
+    '冰箱': 'Refrigerator', '洗衣机': 'Washing Machine', '微波炉': 'Microwave'
+};
+// 中文产品名转英文（用于搜索匹配）
+function productToEn(zh) {
+    if (!zh) return '';
+    return PRODUCT_ZH_TO_EN[zh.trim()] || zh;
+}
 
 function escapeHtml(s) {
     if (!s) return '';
@@ -1377,7 +1408,7 @@ async function showStatDetail(type) {
 async function searchCustomers() {
     const industry = document.getElementById('sc-industry').value.trim();
     if (!industry) { showAlert('sc-alert', '请选择行业/产品', 'error'); return; }
-    const product = document.getElementById('sc-product').value.trim();
+    const product = productToEn(document.getElementById('sc-product').value.trim());
     const btn = document.getElementById('sc-btn');
     btn.disabled = true; btn.innerHTML = '<span class="loading"></span>搜索中...';
     try {
@@ -1733,11 +1764,11 @@ function selectEmailType(type) {
 
 // 示例数据库 - 用于一键AI生成
 const SAMPLE_DATA = [
-    { company: 'Texas Instruments', industry: 'electronics', product: 'semiconductor', contact: 'John Smith', email: 'support@ti.com' },
-    { company: 'IKEA', industry: 'furniture', product: 'office chair', contact: 'Anna Lindberg', email: 'partner@ikea.com' },
-    { company: 'Inditex', industry: 'textile', product: 'cotton fabric', contact: 'Pablo Garcia', email: 'supply@inditex.com' },
-    { company: 'Caterpillar', industry: 'machinery', product: 'hydraulic pump', contact: 'Mike Johnson', email: 'procurement@cat.com' },
-    { company: 'Toyota', industry: 'automotive', product: 'brake system', contact: 'Tanaka San', email: 'supplier@toyota.com' },
+    { company: 'Texas Instruments', industry: 'electronics', product: '半导体', contact: 'John Smith', email: 'support@ti.com' },
+    { company: 'IKEA', industry: 'furniture', product: '办公椅', contact: 'Anna Lindberg', email: 'partner@ikea.com' },
+    { company: 'Inditex', industry: 'textile', product: '面料', contact: 'Pablo Garcia', email: 'supply@inditex.com' },
+    { company: 'Caterpillar', industry: 'machinery', product: '液压泵', contact: 'Mike Johnson', email: 'procurement@cat.com' },
+    { company: 'Toyota', industry: 'automotive', product: '刹车系统', contact: 'Tanaka San', email: 'supplier@toyota.com' },
 ];
 
 async function autoGenerateAll() {
@@ -1869,7 +1900,7 @@ async function startWorkflow() {
         const res = await api('/workflow/full', 'POST', {
             industry, region: document.getElementById('wf-region').value.trim(),
             count: parseInt(document.getElementById('wf-count').value) || 5,
-            product: document.getElementById('wf-product').value.trim(),
+            product: productToEn(document.getElementById('wf-product').value.trim()),
             send_email: document.getElementById('wf-send-email').checked,
             email_template: document.getElementById('wf-template').value,
         });
