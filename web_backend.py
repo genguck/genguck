@@ -523,7 +523,11 @@ class SMTPConfigRequest(BaseModel):
 async def root():
     frontend = SCRIPT_DIR / "web_frontend.html"
     if frontend.exists():
-        return FileResponse(str(frontend))
+        return FileResponse(str(frontend), headers={
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0",
+        })
     return HTMLResponse("<h1>请先创建 web_frontend.html</h1>")
 
 @app.get("/api/health")

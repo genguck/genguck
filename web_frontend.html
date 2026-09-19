@@ -920,7 +920,12 @@ document.addEventListener('click', function(e) {
 });
 
 async function api(path, method, body) {
-    method = method || 'GET';
+    // 容错：若第二个参数是对象（被当作 body 传入），自动推断 method
+    if (method !== undefined && typeof method !== 'string') {
+        body = method;
+        method = 'POST';
+    }
+    method = (typeof method === 'string' && method) ? method.toUpperCase() : (body !== undefined ? 'POST' : 'GET');
     const opts = { method, headers: { 'Content-Type': 'application/json' } };
     const key = localStorage.getItem('api_key');
     if (key) opts.headers['X-API-Key'] = key;
