@@ -204,12 +204,103 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC'
             <div class="card-title">🚀 一键获客全流程</div>
             <p style="color:#6b7280;font-size:13px;margin-bottom:16px;">自动完成「客户搜索 → 官网爬取 → 联系方式提取 → 客户评分 → CRM录入 → 开发信发送」</p>
             <div class="form-row">
-                <div class="form-group" style="flex:2;"><label>行业/产品 *</label><input type="text" id="wf-industry" placeholder="如：electronics, furniture"></div>
-                <div class="form-group"><label>目标地区</label><input type="text" id="wf-region" placeholder="USA, Europe"></div>
-                <div class="form-group"><label>数量</label><input type="number" id="wf-count" value="5" min="1" max="20"></div>
+                <div class="form-group" style="flex:2;"><label>行业/产品 *</label>
+                    <select id="wf-industry">
+                        <option value="">-- 请选择行业 --</option>
+                        <option value="electronics">电子产品</option>
+                        <option value="semiconductor">半导体</option>
+                        <option value="furniture">家具</option>
+                        <option value="textile">纺织服装</option>
+                        <option value="machinery">机械</option>
+                        <option value="automotive">汽车配件</option>
+                        <option value="construction">建材</option>
+                        <option value="chemical">化工</option>
+                        <option value="food">食品</option>
+                        <option value="medical">医疗器械</option>
+                        <option value="packaging">包装</option>
+                        <option value="metal">金属制品</option>
+                        <option value="plastic">塑料制品</option>
+                        <option value="ceramic">陶瓷</option>
+                        <option value="glass">玻璃制品</option>
+                        <option value="toys">玩具</option>
+                        <option value="gifts">礼品</option>
+                        <option value="hardware">五金</option>
+                        <option value="lighting">灯具照明</option>
+                        <option value="home appliances">家用电器</option>
+                    </select>
+                </div>
+                <div class="form-group"><label>目标地区</label>
+                    <select id="wf-region">
+                        <option value="">-- 全部地区 --</option>
+                        <option value="USA">美国</option>
+                        <option value="Canada">加拿大</option>
+                        <option value="Mexico">墨西哥</option>
+                        <option value="Germany">德国</option>
+                        <option value="UK">英国</option>
+                        <option value="France">法国</option>
+                        <option value="Italy">意大利</option>
+                        <option value="Spain">西班牙</option>
+                        <option value="Netherlands">荷兰</option>
+                        <option value="Russia">俄罗斯</option>
+                        <option value="Japan">日本</option>
+                        <option value="South Korea">韩国</option>
+                        <option value="India">印度</option>
+                        <option value="Australia">澳大利亚</option>
+                        <option value="Brazil">巴西</option>
+                        <option value="Argentina">阿根廷</option>
+                        <option value="UAE">阿联酋</option>
+                        <option value="Saudi Arabia">沙特</option>
+                        <option value="Turkey">土耳其</option>
+                        <option value="Egypt">埃及</option>
+                        <option value="South Africa">南非</option>
+                        <option value="Europe">欧洲</option>
+                        <option value="Southeast Asia">东南亚</option>
+                        <option value="Middle East">中东</option>
+                        <option value="Africa">非洲</option>
+                        <option value="South America">南美洲</option>
+                        <option value="Oceania">大洋洲</option>
+                    </select>
+                </div>
+                <div class="form-group"><label>数量</label>
+                    <select id="wf-count">
+                        <option value="1">1</option>
+                        <option value="3">3</option>
+                        <option value="5" selected>5</option>
+                        <option value="8">8</option>
+                        <option value="10">10</option>
+                        <option value="15">15</option>
+                        <option value="20">20</option>
+                    </select>
+                </div>
             </div>
             <div class="form-row">
-                <div class="form-group"><label>产品名称</label><input type="text" id="wf-product" placeholder="可选"></div>
+                <div class="form-group"><label>产品名称</label>
+                    <input type="text" id="wf-product" list="wf-product-list" placeholder="选择或输入产品">
+                    <datalist id="wf-product-list">
+                        <option value="LED Light"><option value="Solar Panel"><option value="Power Bank">
+                        <option value="Bluetooth Speaker"><option value="Smart Watch"><option value="USB Cable">
+                        <option value="Phone Case"><option value="Earphone"><option value="Laptop">
+                        <option value="Office Chair"><option value="Dining Table"><option value="Sofa">
+                        <option value="T-Shirt"><option value="Jeans"><option value="Jacket">
+                        <option value="Towel"><option value="Bed Sheet"><option value="Curtain">
+                        <option value="Gear"><option value="Bearing"><option value="Motor">
+                        <option value="Brake Pad"><option value="Spark Plug"><option value="Tire">
+                        <option value="Cement"><option value="Tile"><option value="Door">
+                        <option value="Chemical"><option value="Fertilizer"><option value="Dye">
+                        <option value="Rice"><option value="Tea"><option value="Seafood">
+                        <option value="Stethoscope"><option value="Mask"><option value="Bandage">
+                        <option value="Carton Box"><option value="Bubble Wrap"><option value="Tape">
+                        <option value="Steel Pipe"><option value="Aluminum Profile"><option value="Wire">
+                        <option value="Plastic Bottle"><option value="Plastic Bag"><option value="Container">
+                        <option value="Ceramic Cup"><option value="Ceramic Tile"><option value="Porcelain">
+                        <option value="Glass Bottle"><option value="Mirror"><option value="Glassware">
+                        <option value="Action Figure"><option value="Building Block"><option value="Plush Toy">
+                        <option value="Mug"><option value="Keychain"><option value="Calendar">
+                        <option value="Screwdriver"><option value="Wrench"><option value="Drill">
+                        <option value="Ceiling Light"><option value="Table Lamp"><option value="Floodlight">
+                        <option value="Refrigerator"><option value="Washing Machine"><option value="Microwave">
+                    </datalist>
+                </div>
                 <div class="form-group">
                     <label>邮件模板</label>
                     <select id="wf-template">
