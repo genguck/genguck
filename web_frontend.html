@@ -275,7 +275,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC'
             </div>
             <div class="form-row">
                 <div class="form-group"><label>产品名称</label>
-                    <input type="text" id="wf-product" list="wf-product-list" placeholder="选择或输入产品">
+                    <input type="text" id="wf-product" list="wf-product-list" placeholder="选择或输入产品" oninput="translateProductName('wf-product', 'wf-product-zh')">
                     <datalist id="wf-product-list">
                         <option value="LED Light"><option value="Solar Panel"><option value="Power Bank">
                         <option value="Bluetooth Speaker"><option value="Smart Watch"><option value="USB Cable">
@@ -300,6 +300,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC'
                         <option value="Ceiling Light"><option value="Table Lamp"><option value="Floodlight">
                         <option value="Refrigerator"><option value="Washing Machine"><option value="Microwave">
                     </datalist>
+                    <div id="wf-product-zh" style="margin-top:4px;font-size:12px;color:#3b82f6;min-height:16px;"></div>
                 </div>
                 <div class="form-group">
                     <label>邮件模板</label>
@@ -533,7 +534,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC'
             <div class="form-row">
                 <div class="form-group"><label>联系人</label><input type="text" id="em-contact"></div>
                 <div class="form-group"><label>行业</label><input type="text" id="em-industry"></div>
-                <div class="form-group"><label>产品名称</label><input type="text" id="em-product"></div>
+                <div class="form-group"><label>产品名称</label><input type="text" id="em-product" oninput="translateProductName('em-product', 'em-product-zh')"><div id="em-product-zh" style="margin-top:4px;font-size:12px;color:#3b82f6;min-height:16px;"></div></div>
             </div>
             <div style="margin-bottom:14px;">
                 <label style="font-size:13px;font-weight:500;color:#374151;display:block;margin-bottom:8px;">邮件类型</label>
@@ -794,14 +795,14 @@ function showCustomerDetail(c) {
     html += '<div style="background:#f9fafb;border-radius:10px;padding:16px;margin-bottom:14px;">';
     html += '<div style="font-size:13px;color:#6b7280;margin-bottom:8px;font-weight:600;">📌 基本信息</div>';
     html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px;">';
-    html += '<div><span style="color:#6b7280;">公司名称：</span><span style="font-weight:500;">' + escapeHtml(c.company_name || c.name || '-') + '</span></div>';
-    html += '<div><span style="color:#6b7280;">行业：</span>' + escapeHtml(c.industry || '-') + '</div>';
-    html += '<div><span style="color:#6b7280;">国家/地区：</span>' + escapeHtml(c.country || c.region || '-') + '</div>';
+    html += '<div><span style="color:#6b7280;">公司名称：</span><span style="font-weight:500;" class="cd-translatable" data-text="' + escapeHtml(c.company_name || c.name || '') + '">' + escapeHtml(c.company_name || c.name || '-') + '</span></div>';
+    html += '<div><span style="color:#6b7280;">行业：</span><span class="cd-translatable" data-text="' + escapeHtml(c.industry || '') + '">' + escapeHtml(c.industry || '-') + '</span></div>';
+    html += '<div><span style="color:#6b7280;">国家/地区：</span><span class="cd-translatable" data-text="' + escapeHtml(c.country || c.region || '') + '">' + escapeHtml(c.country || c.region || '-') + '</span></div>';
     html += '<div><span style="color:#6b7280;">网站：</span>' + (c.website ? '<a href="' + escapeHtml(c.website) + '" target="_blank" style="color:#667eea;word-break:break-all;">' + escapeHtml(c.website) + '</a>' : '-') + '</div>';
     html += '<div><span style="color:#6b7280;">评分：</span><span class="level-badge level-' + (c.level || 'D') + '">' + (c.score || 0) + '分 ' + (c.level || 'D') + '级</span></div>';
     html += '<div><span style="color:#6b7280;">状态：</span>' + escapeHtml(c.status || '待开发') + '</div>';
     html += '</div>';
-    if (c.address) html += '<div style="margin-top:10px;font-size:13px;"><span style="color:#6b7280;">地址：</span>' + escapeHtml(decodeEntities(c.address)) + '</div>';
+    if (c.address) html += '<div style="margin-top:10px;font-size:13px;"><span style="color:#6b7280;">地址：</span><span class="cd-translatable" data-text="' + escapeHtml(decodeEntities(c.address)) + '">' + escapeHtml(decodeEntities(c.address)) + '</span></div>';
     if (c.crawl_note) html += '<div style="margin-top:6px;font-size:12px;color:#9ca3af;">爬取备注：' + escapeHtml(c.crawl_note) + '</div>';
     html += '</div>';
 
@@ -881,7 +882,8 @@ function showCustomerDetail(c) {
             html += '<div style="font-size:13px;color:#6b7280;margin-bottom:8px;font-weight:600;">🏭 产品/服务</div>';
             html += '<div style="display:flex;gap:6px;flex-wrap:wrap;">';
             c.products.slice(0, 12).forEach(p => {
-                html += '<span style="padding:3px 10px;background:#f3f4f6;border-radius:12px;font-size:12px;color:#374151;">' + escapeHtml(decodeEntities(p)) + '</span>';
+                const pt = decodeEntities(p);
+                html += '<span style="padding:3px 10px;background:#f3f4f6;border-radius:12px;font-size:12px;color:#374151;" class="cd-translatable" data-text="' + escapeHtml(pt) + '">' + escapeHtml(pt) + '</span>';
             });
             html += '</div></div>';
         }
@@ -890,7 +892,7 @@ function showCustomerDetail(c) {
             html += '<div style="font-size:13px;color:#6b7280;margin-bottom:8px;font-weight:600;">✅ 认证资质</div>';
             html += '<div style="display:flex;gap:6px;flex-wrap:wrap;">';
             c.certifications.forEach(ct => {
-                html += '<span style="padding:3px 10px;background:#d1fae5;color:#065f46;border-radius:12px;font-size:12px;font-weight:500;">' + escapeHtml(ct) + '</span>';
+                html += '<span style="padding:3px 10px;background:#d1fae5;color:#065f46;border-radius:12px;font-size:12px;font-weight:500;" class="cd-translatable" data-text="' + escapeHtml(ct) + '">' + escapeHtml(ct) + '</span>';
             });
             html += '</div></div>';
         }
@@ -901,12 +903,122 @@ function showCustomerDetail(c) {
     if (c.notes || c.notes) {
         html += '<div style="border:1px solid #e5e7eb;border-radius:10px;padding:14px;">';
         html += '<div style="font-size:13px;color:#6b7280;margin-bottom:6px;font-weight:600;">📝 备注</div>';
-        html += '<div style="font-size:13px;color:#374151;line-height:1.6;">' + escapeHtml(c.notes || c.notes) + '</div>';
+        html += '<div style="font-size:13px;color:#374151;line-height:1.6;" class="cd-translatable" data-text="' + escapeHtml(c.notes || c.notes || '') + '">' + escapeHtml(c.notes || c.notes) + '</div>';
         html += '</div>';
     }
 
     body.innerHTML = html;
     document.getElementById('customer-detail-modal').style.display = 'flex';
+    // 自动翻译所有标记为可翻译的文本
+    translateCustomerDetail();
+}
+
+// 翻译客户详情弹窗中的所有英文字段为中文
+async function translateCustomerDetail() {
+    const els = document.querySelectorAll('#cd-body .cd-translatable');
+    if (!els.length) return;
+    // 收集去重后的文本
+    const textSet = new Set();
+    els.forEach(el => {
+        const t = (el.getAttribute('data-text') || '').trim();
+        if (t && !/^[\u4e00-\u9fa5]+$/.test(t)) textSet.add(t); // 跳过纯中文
+    });
+    if (!textSet.size) return;
+    const texts = Array.from(textSet);
+    // 逐个翻译（避免接口限流），结果缓存
+    const cache = {};
+    for (const text of texts) {
+        if (cache[text]) continue;
+        try {
+            const res = await api('/translate', 'POST', { text: text, target: 'zh-CN' });
+            cache[text] = res.translated || text;
+        } catch (e) {
+            cache[text] = text;
+        }
+    }
+    // 回填翻译结果：在原文后追加中文（蓝色小字）
+    els.forEach(el => {
+        const orig = (el.getAttribute('data-text') || '').trim();
+        const zh = cache[orig];
+        if (zh && zh !== orig) {
+            const cur = el.innerHTML;
+            el.innerHTML = cur + ' <span style="color:#3b82f6;font-size:12px;margin-left:4px;">(' + escapeHtml(zh) + ')</span>';
+        }
+    });
+}
+
+// 批量翻译卡片上的公司名称（带全局缓存，避免重复翻译）
+const _cardNameCache = {};
+async function translateCardNames() {
+    const els = document.querySelectorAll('.card-translatable');
+    if (!els.length) return;
+    const textSet = new Set();
+    els.forEach(el => {
+        const t = (el.getAttribute('data-text') || '').trim();
+        if (t && !/^[\u4e00-\u9fa5]+$/.test(t) && !_cardNameCache[t]) textSet.add(t);
+    });
+    if (!textSet.size) {
+        // 全部已缓存，直接回填
+        els.forEach(el => {
+            const orig = (el.getAttribute('data-text') || '').trim();
+            const zh = _cardNameCache[orig];
+            if (zh && zh !== orig && !el.querySelector('.card-zh')) {
+                el.innerHTML += ' <span class="card-zh" style="color:#3b82f6;font-size:11px;">(' + escapeHtml(zh) + ')</span>';
+            }
+        });
+        return;
+    }
+    const texts = Array.from(textSet);
+    for (const text of texts) {
+        try {
+            const res = await api('/translate', 'POST', { text: text, target: 'zh-CN' });
+            _cardNameCache[text] = res.translated || text;
+        } catch (e) {
+            _cardNameCache[text] = text;
+        }
+    }
+    // 回填所有卡片
+    els.forEach(el => {
+        const orig = (el.getAttribute('data-text') || '').trim();
+        const zh = _cardNameCache[orig];
+        if (zh && zh !== orig && !el.querySelector('.card-zh')) {
+            el.innerHTML += ' <span class="card-zh" style="color:#3b82f6;font-size:11px;">(' + escapeHtml(zh) + ')</span>';
+        }
+    });
+}
+
+// 产品名称翻译（防抖，避免每次输入都调接口）
+let _productTranslateTimer = null;
+const _productCache = {};
+async function translateProductName(inputId, displayId) {
+    const input = document.getElementById(inputId);
+    const display = document.getElementById(displayId);
+    if (!input || !display) return;
+    const text = input.value.trim();
+    if (!text) { display.textContent = ''; return; }
+    // 纯中文不翻译
+    if (/^[\u4e00-\u9fa5\s]+$/.test(text)) { display.textContent = ''; return; }
+    // 缓存命中
+    if (_productCache[text]) {
+        display.textContent = '中文：' + _productCache[text];
+        return;
+    }
+    display.innerHTML = '<span class="loading"></span>翻译中...';
+    clearTimeout(_productTranslateTimer);
+    _productTranslateTimer = setTimeout(async () => {
+        try {
+            const res = await api('/translate', 'POST', { text: text, target: 'zh-CN' });
+            const zh = res.translated || text;
+            _productCache[text] = zh;
+            if (zh !== text) {
+                display.textContent = '中文：' + zh;
+            } else {
+                display.textContent = '';
+            }
+        } catch (e) {
+            display.textContent = '';
+        }
+    }, 500);
 }
 
 function closeCustomerDetail() {
@@ -1281,7 +1393,7 @@ function renderSearchResults() {
     container.className = 'customer-grid';
     container.innerHTML = _searchResults.map((c, i) =>
         '<div class="customer-card" style="cursor:pointer;" onclick="showCustomerDetail(_searchResults[' + i + '])" title="点击查看详情">' +
-            '<div class="customer-name">' + escapeHtml(c.company_name) + '</div>' +
+            '<div class="customer-name card-translatable" data-text="' + escapeHtml(c.company_name) + '">' + escapeHtml(c.company_name) + '</div>' +
             '<a class="customer-web" href="' + escapeHtml(c.website) + '" target="_blank" onclick="event.stopPropagation()">' + escapeHtml(c.website) + '</a>' +
             '<div class="customer-info">📍 ' + escapeHtml(c.country || '') +
                 (c.whatsapp ? ' &nbsp; 💬 <span style="color:#128C7E;">WhatsApp</span>' : '') + '<br>' +
@@ -1298,6 +1410,8 @@ function renderSearchResults() {
             '</div>' +
         '</div>'
     ).join('');
+    // 批量翻译卡片上的公司名称
+    translateCardNames();
 }
 
 function fillAndGoEmail(idx) {
@@ -1762,7 +1876,7 @@ async function startWorkflow() {
             '<div class="customer-grid">' +
             res.customers.map((c, idx) =>
                 '<div class="customer-card" style="cursor:pointer;" onclick="showCustomerDetail(_workflowResults[' + idx + '])" title="点击查看详情">' +
-                    '<div class="customer-name">' + escapeHtml(c.company_name) + '</div>' +
+                    '<div class="customer-name card-translatable" data-text="' + escapeHtml(c.company_name) + '">' + escapeHtml(c.company_name) + '</div>' +
                     '<div class="customer-web">' + escapeHtml(c.website) + '</div>' +
                     '<div style="font-size:12px;color:#6b7280;margin:6px 0;">📍 ' + escapeHtml(c.country || '') + (c.whatsapp ? ' &nbsp; 💬 <span style="color:#128C7E;">WhatsApp</span>' : '') + '</div>' +
                     '<div class="score-detail">' +
@@ -1781,6 +1895,8 @@ async function startWorkflow() {
             ).join('') +
             '</div>';
         showAlert('wf-alert', '一键获客完成！点击客户卡片查看详情（含WhatsApp）', 'success');
+        // 批量翻译卡片上的公司名称
+        translateCardNames();
     } catch (e) { showAlert('wf-alert', e.message, 'error'); }
     finally { btn.disabled = false; btn.innerHTML = '🚀 开始一键获客'; loadDashboard(); loadHistory(); }
 }

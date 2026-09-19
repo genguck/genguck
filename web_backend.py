@@ -704,12 +704,25 @@ _GLOSSARY = {
     'personal electronics': '个人电子产品', 'consumer': '消费', 'medical': '医疗',
     'healthcare': '医疗保健', 'telecom': '电信', 'telecommunications': '电信',
     'energy': '能源', 'renewable': '可再生能源', 'solar': '太阳能', 'lighting': '照明',
+    # 常见公司名翻译
+    'texas instruments': '德州仪器', 'infineon technologies': '英飞凌科技', 'infineon': '英飞凌',
+    'analog devices': '亚德诺半导体', 'stmicroelectronics': '意法半导体', 'onsemi': '安森美',
+    'microchip technology': '微芯科技', 'nxp semiconductors': '恩智浦半导体', 'nxp': '恩智浦',
+    'mouser electronics': '贸泽电子', 'digi-key electronics': '得捷电子', 'digi-key': '得捷',
+    'intel': '英特尔', 'amd': '超威半导体', 'qualcomm': '高通', 'broadcom': '博通',
+    'nvidia': '英伟达', 'arm': '安谋', 'samsung': '三星', 'sony': '索尼',
+    'panasonic': '松下', 'toshiba': '东芝', 'hitachi': '日立', 'mitsubishi': '三菱',
+    'fujitsu': '富士通', 'nec': '日本电气', 'renesas': '瑞萨电子', 'rohm': '罗姆',
+    'murata': '村田', 'tdk': '东电化', 'yageo': '国巨', 'hon hai': '鸿海',
+    'foxconn': '富士康', 'tsmc': '台积电', 'mediaTek': '联发科', 'realtek': '瑞昱',
 }
 
 def _local_translate(text: str) -> str:
-    """本地降级翻译（基于词汇表）"""
+    """本地降级翻译（基于词汇表，长短语优先匹配）"""
     result = text
-    for en, zh in _GLOSSARY.items():
+    # 按 key 长度降序排列，确保长短语优先匹配
+    sorted_items = sorted(_GLOSSARY.items(), key=lambda x: len(x[0]), reverse=True)
+    for en, zh in sorted_items:
         result = re.sub(re.escape(en), zh, result, flags=re.IGNORECASE)
     return result
 
@@ -720,6 +733,12 @@ async def translate_text(req: TranslateRequest, user: str = Depends(get_current_
     if not text:
         return {"original": "", "translated": "", "method": "empty"}
     src = req.source if req.source != "auto" else "en"
+
+    def _try_local_glossary(original: str) -> str:
+        """尝试本地词汇表翻译，若结果与原文不同则返回，否则返回原文"""
+        local = _local_translate(original)
+        return local if local.strip().lower() != original.strip().lower() else original
+
     # 1. MyMemory 在线翻译（免费，无需 Key，单次 ~500 字）
     try:
         chunks = _split_text(text, 480)
@@ -744,6 +763,11 @@ async def translate_text(req: TranslateRequest, user: str = Depends(get_current_
         if ok:
             translated = " ".join(parts).strip()
             if translated:
+                # 若在线翻译结果与原文相同（未真正翻译），用本地词汇表补充
+                if translated.strip().lower() == text.strip().lower():
+                    local = _try_local_glossary(text)
+                    if local != text:
+                        return {"original": text, "translated": local, "source_lang": src, "method": "local-glossary"}
                 return {"original": text, "translated": translated, "source_lang": src, "method": "online-mymemory"}
     except Exception:
         pass
@@ -756,6 +780,11 @@ async def translate_text(req: TranslateRequest, user: str = Depends(get_current_
             data = resp.json()
             t = data.get("translatedText", "")
             if t:
+                # 若在线翻译结果与原文相同，用本地词汇表补充
+                if t.strip().lower() == text.strip().lower():
+                    local = _try_local_glossary(text)
+                    if local != text:
+                        return {"original": text, "translated": local, "source_lang": src, "method": "local-glossary"}
                 return {"original": text, "translated": t, "source_lang": src, "method": "online-libre"}
     except Exception:
         pass
