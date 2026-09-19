@@ -5,12 +5,14 @@ Agent外贸获客 - FastAPI 后端服务
 """
 import asyncio
 import hashlib
+import ipaddress
 import json
 import os
 import random
 import re
 import secrets
 import smtplib
+import socket
 import sqlite3
 import sys
 import time
@@ -71,30 +73,88 @@ def _validate_email(email: str) -> bool:
         return False
     return bool(re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', email))
 
-def _is_safe_url(url: str) -> bool:
-    """SSRF防护：检查URL是否安全"""
+def _validate_website(url: str) -> bool:
+    """校验网站URL：仅允许 http/https，且必须可解析为外网IP（防SSRF+XSS）"""
     if not url:
-        return False
+        return True  # 空值允许（非必填）
     try:
         parsed = urlparse(url)
         if parsed.scheme not in ('http', 'https'):
             return False
+        if not parsed.hostname:
+            return False
+        return True
+    except Exception:
+        return False
+
+def _is_safe_url(url: str) -> bool:
+    """SSRF防护：检查URL是否安全（DNS解析 + IP段校验，防绕过）"""
+    if not url:
+        return False
+    try:
+        parsed = urlparse(url)
+        # 仅允许 http/https 协议
+        if parsed.scheme not in ('http', 'https'):
+            return False
         host = parsed.hostname or ""
-        # 拦截内网地址
-        for bad in ('127.0.0.1', 'localhost', '0.0.0.0', '169.254.', '10.', '192.168.', '172.16.', '172.17.', '172.18.', '172.19.', '172.20.', '172.21.', '172.22.', '172.23.', '172.24.', '172.25.', '172.26.', '172.27.', '172.28.', '172.29.', '172.30.', '172.31.'):
-            if host.startswith(bad):
+        if not host:
+            return False
+        # 先做一次基础黑名单（处理无法解析的情况）
+        host_lower = host.lower()
+        for bad in ('localhost', 'localhost.'):
+            if host_lower == bad or host_lower.endswith('.' + bad):
                 return False
+        # DNS 解析域名到所有 IP 地址，逐一检查是否为内网/回环地址
+        # 这能抵御：十六进制IP、八进制IP、十进制整数IP、简写IP、IPv6、DNS重绑定
+        try:
+            addr_infos = socket.getaddrinfo(host, parsed.port or 80, proto=socket.IPPROTO_TCP)
+        except socket.gaierror:
+            # 域名无法解析，拒绝（防止后续 requests 重新解析时命中内网）
+            return False
+        except Exception:
+            return False
+        for family, _, _, _, sockaddr in addr_infos:
+            ip_str = sockaddr[0]
+            try:
+                ip = ipaddress.ip_address(ip_str)
+            except ValueError:
+                continue
+            # 拒绝所有私有/保留/回环/链路本地/组播地址
+            if (ip.is_private or ip.is_loopback or ip.is_reserved
+                    or ip.is_link_local or ip.is_multicast or ip.is_unspecified):
+                return False
+            # 额外拒绝 CGNAT 共享地址段 100.64.0.0/10
+            if isinstance(ip, ipaddress.IPv4Address):
+                if ip in ipaddress.ip_network('100.64.0.0/10'):
+                    return False
+                # 拒绝 0.0.0.0/8（"this" network）
+                if ip in ipaddress.ip_network('0.0.0.0/8'):
+                    return False
         return True
     except Exception:
         return False
 
 def _rate_limit(api_key: str) -> bool:
-    """速率限制检查"""
+    """速率限制检查（按 API Key）"""
     now = time.time()
     rec = _rate_counter[api_key]
     rec[:] = [t for t in rec if now - t < 3600]
     recent_min = sum(1 for t in rec if now - t < 60)
     if recent_min >= RATE_LIMIT_PER_MIN or len(rec) >= RATE_LIMIT_PER_HOUR:
+        return False
+    rec.append(now)
+    return True
+
+# 健康检查专用：基于客户端 IP 的速率限制（更宽松，30/min）
+_ip_rate_counter: Dict[str, List[float]] = defaultdict(list)
+_IP_RATE_LIMIT_PER_MIN = 30
+
+def _ip_rate_limit(client_ip: str) -> bool:
+    """基于客户端IP的速率限制（用于无需鉴权的健康检查接口）"""
+    now = time.time()
+    rec = _ip_rate_counter[client_ip]
+    rec[:] = [t for t in rec if now - t < 60]
+    if len(rec) >= _IP_RATE_LIMIT_PER_MIN:
         return False
     rec.append(now)
     return True
@@ -453,7 +513,11 @@ async def root():
     return HTMLResponse("<h1>请先创建 web_frontend.html</h1>")
 
 @app.get("/api/health")
-async def health():
+async def health(request: Request):
+    # 健康检查无需鉴权，但限制单 IP 速率，防止被滥用
+    client_ip = request.client.host if request.client else "unknown"
+    if not _ip_rate_limit(client_ip):
+        raise HTTPException(status_code=429, detail="请求过于频繁")
     return {"status": "ok", "timestamp": int(time.time())}
 
 @app.post("/api/customer/search")
@@ -1229,13 +1293,15 @@ async def get_email_history(user: str = Depends(get_current_user), limit: int = 
 async def crm_add(req: CRMAddRequest, user: str = Depends(get_current_user)):
     if req.email and not _validate_email(req.email):
         raise HTTPException(status_code=400, detail="邮箱格式不合法")
+    if req.website and not _validate_website(req.website):
+        raise HTTPException(status_code=400, detail="网站URL不合法（仅允许http/https）")
     customers = _get_customers()
     record = {
         "id": str(uuid.uuid4()),
         "company_name": _sanitize_html(req.company_name.strip()),
         "website": req.website.strip(),
         "email": req.email.strip(),
-        "phone": req.phone.strip(),
+        "phone": _sanitize_html(req.phone.strip()),
         "industry": _sanitize_html(req.industry.strip()),
         "score": req.score,
         "level": req.level or ("A" if req.score >= 85 else "B" if req.score >= 70 else "C" if req.score >= 55 else "D"),
@@ -1273,9 +1339,22 @@ async def crm_update(customer_id: str, req: CRMUpdateRequest, user: str = Depend
     customers = _get_customers()
     for c in customers:
         if c.get("id") == customer_id:
-            for k, v in req.dict(exclude_none=True).items():
-                if isinstance(v, str) and k in ["company_name", "industry", "status", "notes"]:
-                    c[k] = _sanitize_html(v)
+            update_data = req.dict(exclude_none=True)
+            # 校验 website 和 email
+            if "website" in update_data and update_data["website"] and not _validate_website(update_data["website"]):
+                raise HTTPException(status_code=400, detail="网站URL不合法（仅允许http/https）")
+            if "email" in update_data and update_data["email"] and not _validate_email(update_data["email"]):
+                raise HTTPException(status_code=400, detail="邮箱格式不合法")
+            for k, v in update_data.items():
+                if isinstance(v, str):
+                    if k in ("company_name", "industry", "status", "notes", "phone"):
+                        c[k] = _sanitize_html(v)
+                    elif k == "website":
+                        c[k] = v.strip()
+                    elif k == "email":
+                        c[k] = v.strip()
+                    else:
+                        c[k] = v
                 else:
                     c[k] = v
             c["updated_at"] = int(time.time())
@@ -1522,9 +1601,11 @@ async def dashboard_stats(user: str = Depends(get_current_user)):
 
 if __name__ == "__main__":
     import uvicorn
+    # 启动日志中不直接打印完整 API Key，仅打印前4位用于识别（防信息泄露）
+    masked_key = API_KEY[:4] + "****" + API_KEY[-4:] if len(API_KEY) > 8 else "****"
     print(f"\n{'='*50}")
     print(f"  Agent外贸获客 服务启动")
-    print(f"  API Key: {API_KEY}")
+    print(f"  API Key: {masked_key}（完整 Key 请查看环境变量 WAIMAO_API_KEY）")
     print(f"  访问地址: http://localhost:{PORT}")
     print(f"{'='*50}\n")
     uvicorn.run(app, host=HOST, port=PORT)
